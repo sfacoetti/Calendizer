@@ -1,0 +1,363 @@
+@using System.Globalization
+@implements IDisposable
+@inject CalendarState S
+@inject IJSRuntime JS
+
+<div class="app">
+    <nav class="side @(S.SidebarOpen ? "" : "closed")">
+        <button class="handle" title="Mostra/nascondi barra" @onclick="() => { S.SidebarOpen = !S.SidebarOpen; S.Navigate(); }"><img src="@Ic("sidebar")" /></button>
+        @if (S.SidebarOpen)
+        {
+            @Nav(ViewMode.Day, "day", "Giorno")
+            @Nav(ViewMode.WorkWeek, "workweek", "Settimana lavorativa (lun-ven)")
+            @Nav(ViewMode.Week, "week", "Settimana")
+            @Nav(ViewMode.Month, "month", "Mese")
+            <div class="sp"></div>
+            <button title="Impostazioni" @onclick="() => settings = true"><img src="@Ic("settings")" /></button>
+        }
+    </nav>
+    <div class="main">
+        <header>
+            <button @onclick="() => Step(-1)">‹</button>
+            <button @onclick="Today">Oggi</button>
+            <button @onclick="() => Step(1)">›</button>
+            <h2>@Title</h2>
+        </header>
+
+        @if (S.View == ViewMode.Month)
+        {
+            var first = new DateTime(S.CurrentDate.Year, S.CurrentDate.Month, 1);
+            var start = Monday(first);
+            <div class="month">
+                @for (int w = 0; w < 7; w++)
+                {
+                    <div class="mh">@It.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)((w + 1) % 7))</div>
+                }
+                @for (int i = 0; i < 42; i++)
+                {
+                    var d = start.AddDays(i);
+                    <div class="mc @(d.Month != first.Month ? "other" : "") @(d == DateTime.Today ? "today" : "")"
+                         data-day="@d.ToString("yyyy-MM-dd")" data-month="1" @ondblclick="() => OpenDay(d)">
+                        <div class="n">@d.Day</div>
+                        @foreach (var a in S.Activities.Where(x => x.Start.Date == d).OrderBy(x => x.Start))
+                        {
+                            <div class="chip" draggable="true" data-id="@a.Id" title="@a.Sender"
+                                 style="background:@S.ColorOf(a)40;border-color:@S.ColorOf(a)"
+                                 @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
+                                 @onclick="() => mail = a">@a.Start.ToString("HH:mm") @a.Title</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            var days = Days();
+            <div class="grid" style="--cols:@days.Count">
+                <div class="head">
+                    <div class="corner"></div>
+                    @foreach (var d in days)
+                    {
+                        <div class="dh @(d == DateTime.Today ? "today" : "")" @onclick="() => OpenDay(d)">@d.ToString("ddd d MMM", It)</div>
+                    }
+                </div>
+                <div class="body">
+                    <div class="times">
+                        @for (int m = CalendarState.FirstMinute; m < CalendarState.LastMinute; m += 30)
+                        {
+                            <div class="tl">@(m % 60 == 0 ? $"{m / 60}:00" : "")</div>
+                        }
+                    </div>
+                    @foreach (var d in days)
+                    {
+                        <div class="col @(d == DateTime.Today ? "today" : "")" data-day="@d.ToString("yyyy-MM-dd")">
+                            @for (int m = CalendarState.FirstMinute; m < CalendarState.LastMinute; m += 30)
+                            {
+                                var mm = m; // copie: le lambda non devono catturare la variabile del ciclo
+                                var ii = (m - CalendarState.FirstMinute) / 30;
+                                <div class="slot @(m % 60 == 30 ? "half" : "") @(IsSel(d, ii) ? "sel" : "")" @onmousedown="e => SlotDown(d, ii, e)" @onmouseenter="e => SlotEnter(d, ii, e)" @onmouseup="() => selecting = false" @ondblclick="() => OpenNew(d, mm, 30)"></div>
+                            }
+                            @foreach (var li in S.LayoutDay(d))
+                            {
+                                var a = li.Act;
+                                var c = S.ColorOf(a);
+                                var span = CalendarState.LastMinute - CalendarState.FirstMinute;
+                                var top = (a.Start.TimeOfDay.TotalMinutes - CalendarState.FirstMinute) * 100.0 / span;
+                                var h = a.Minutes * 100.0 / span;
+                                <div class="act @(selected == a.Id ? "sel" : "")" draggable="true" data-id="@a.Id" @onclick="() => SelectAct(a)" @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
+                                     style="top:@Pc(top);height:calc(@Pc(h) - 2px);left:@Pc(li.Col * 100.0 / li.Cols);width:@Pc(100.0 / li.Cols);background:@(c)40;border-color:@c">
+                                    <div class="at">@a.Title</div>
+                                    <div class="as">@(string.IsNullOrEmpty(a.Sender) ? a.Body : a.Sender)</div>
+                                    <span class="view" title="Mostra testo" @onclick="() => mail = a"><img src="@Ic("mail")" /></span>
+                                    <div class="rz"></div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (newDlg)
+{
+    <div class="modal-bg" @onclick="CloseNew">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="mtop"><h3>Nuova attività</h3><button class="xbtn" title="Chiudi senza salvare" @onclick="CloseNew"><img src="@Ic("close")" /></button></div>
+            <div class="meta">@nDay.ToString("dddd d MMMM yyyy", It) – @($"{nMin / 60}:{nMin % 60:00}")</div>
+            <input class="fld" placeholder="Titolo attività" @bind="nTitle" @bind:event="oninput" @onkeydown="OnTitleKey" />
+            <textarea class="fld" rows="5" placeholder="Testo descrittivo" @bind="nBody" @bind:event="oninput"></textarea>
+            <div class="row">
+                <span class="lbl">Colore</span>
+                <div class="sws">
+                    @foreach (var c in Palette)
+                    {
+                        var cc = c;
+                        <span class="sw @(nColor == cc ? "pick" : "")" style="background:@cc" @onclick="() => nColor = cc"></span>
+                    }
+                </div>
+                <input type="color" value="@nColor" @onchange="e => nColor = e.Value?.ToString() ?? nColor" />
+            </div>
+            <div class="row">
+                <span class="lbl">Durata</span>
+                <select @onchange="e => nDur = int.Parse(e.Value.ToString())">
+                    @for (int d = 30; nMin + d <= CalendarState.LastMinute; d += 30)
+                    {
+                        <option value="@d" selected="@(d == nDur)">@Dur(d)</option>
+                    }
+                </select>
+                <span class="grow"></span>
+                <button class="confirm" title="Conferma" disabled="@string.IsNullOrWhiteSpace(nTitle)" @onclick="SaveNew"><img src="@Ic("confirm")" /></button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (menuAct != null)
+{
+    <div class="ctx-bg" @onclick="() => menuAct = null" @oncontextmenu="() => menuAct = null" @oncontextmenu:preventDefault></div>
+    <div class="ctx" style="left:min(@Px(mx), calc(100vw - 260px));top:min(@Px(my), calc(100vh - 230px))">
+        <div class="ctx-t">@menuAct.Title</div>
+        <div class="sws">
+            @foreach (var c in Palette)
+            {
+                <span class="sw" style="background:@c" @onclick="() => Paint(c)"></span>
+            }
+        </div>
+        <div class="row">
+            <input type="color" title="Altro colore" value="@S.ColorOf(menuAct)" @onchange="e => Paint(e.Value?.ToString() ?? string.Empty)" />
+            <button @onclick="() => Paint(string.Empty)">Automatico</button>
+            <span class="grow"></span>
+            <button class="trash" title="Elimina attività" @onclick="Delete"><img src="@Ic("trash")" /></button>
+        </div>
+        <hr />
+        <div class="lbl">Sposta a</div>
+        <div class="row">
+            <input type="date" value="@moveDate" @onchange="e => moveDate = e.Value?.ToString()" />
+            <select @onchange="e => moveMin = int.Parse(e.Value.ToString())">
+                @for (int m = CalendarState.FirstMinute; m < CalendarState.LastMinute; m += 30)
+                {
+                    <option value="@m" selected="@(m == moveMin)">@($"{m / 60}:{m % 60:00}")</option>
+                }
+            </select>
+            <button @onclick="DoMove">Sposta</button>
+        </div>
+    </div>
+}
+
+@if (mail != null)
+{
+    <div class="modal-bg" @onclick="() => mail = null">
+        <div class="modal" @onclick:stopPropagation>
+            <h3>@mail.Title</h3>
+            <div class="meta">@if (!string.IsNullOrEmpty(mail.Sender)) {<text>Da: @mail.Sender &lt;@mail.SenderEmail&gt;<br /></text>}@mail.Start.ToString("f", It) (@mail.Minutes min)</div>
+            <pre>@mail.Body</pre>
+            <div class="btns">
+                <button class="trash" title="Elimina attività" @onclick="() => { S.Remove(mail.Id); mail = null; }"><img src="@Ic("trash")" /></button>
+                <button class="xbtn" title="Chiudi" @onclick="() => mail = null"><img src="@Ic("close")" /></button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (settings)
+{
+    <div class="modal-bg" @onclick="() => settings = false">
+        <div class="modal" @onclick:stopPropagation>
+            <h3>Colori per mittente</h3>
+            <div class="meta">Dominio (es. @@hexpol.com) o indirizzo completo. L'indirizzo ha la precedenza.</div>
+            @foreach (var r in S.Rules.ToList())
+            {
+                <div class="rule">
+                    <input value="@r.Key" @onchange="e => SetKey(r, e)" />
+                    <input type="color" value="@r.Color" @onchange="e => SetColor(r, e)" />
+                    <button title="Rimuovi" @onclick="() => { S.Rules.Remove(r); S.Touch(); }">✕</button>
+                </div>
+            }
+            <div class="btns">
+                <button @onclick="AddRule">+ Aggiungi</button>
+                <button @onclick="() => settings = false">Chiudi</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    static string Ic(string n) => $"_content/OrgaLendar.UI/icons/{n}.svg";
+    static readonly CultureInfo It = new("it-IT");
+    Activity mail, menuAct;
+    string selected;
+    bool newDlg;
+    string nTitle = "", nBody = "", nColor = "#1e90ff";
+    DateTime nDay;
+    int nMin, nDur = 30;
+
+    static string Dur(int m) => m < 60 ? $"{m} min" : m % 60 == 0 ? $"{m / 60} h" : $"{m / 60} h {m % 60} min";
+
+    DateTime? selDay;
+    int selA, selB;
+    bool selecting;
+
+    bool IsSel(DateTime d, int i) => selDay == d && i >= Math.Min(selA, selB) && i <= Math.Max(selA, selB);
+    void SelectAct(Activity a) { selected = a.Id; selDay = null; }
+    void CloseNew() { newDlg = false; selDay = null; }
+
+    void SlotDown(DateTime d, int i, MouseEventArgs e)
+    {
+        if (e.Button != 0) return; // solo tasto sinistro
+        selDay = d; selA = selB = i; selecting = true; selected = null;
+    }
+
+    void SlotEnter(DateTime d, int i, MouseEventArgs e)
+    {
+        if (!selecting) return;
+        if (e.Buttons != 1) { selecting = false; return; } // tasto rilasciato fuori dagli slot
+        if (d == selDay) selB = i; // la selezione resta nella stessa colonna
+    }
+
+    // Invio: apre il popup sulle caselle selezionate
+    [JSInvokable]
+    public void EnterKey()
+    {
+        if (selDay == null || mail != null || settings || newDlg || menuAct != null) return;
+        int lo = Math.Min(selA, selB), hi = Math.Max(selA, selB);
+        OpenNew(selDay.Value, CalendarState.FirstMinute + lo * 30, (hi - lo + 1) * 30);
+        InvokeAsync(StateHasChanged);
+    }
+
+    void OpenNew(DateTime day, int minutes, int dur = 30)
+    {
+        nDay = day; nMin = minutes; nDur = dur; nTitle = ""; nBody = ""; nColor = Palette[0];
+        selected = null; newDlg = true;
+    }
+
+    void OnTitleKey(KeyboardEventArgs e) { if (e.Key == "Enter") SaveNew(); }
+
+    void SaveNew()
+    {
+        if (string.IsNullOrWhiteSpace(nTitle)) return;
+        S.AddNote(nTitle.Trim(), nBody, nColor, nDay, nMin, nDur);
+        CloseNew();
+    }
+
+    // Canc: elimina l'attività del menu aperto, altrimenti quella selezionata (mai con un dialogo aperto)
+    [JSInvokable]
+    public void DeleteKey()
+    {
+        if (mail != null || settings || newDlg) return;
+        var id = menuAct?.Id ?? selected;
+        if (id == null) return;
+        menuAct = null; selected = null;
+        S.Remove(id);
+    }
+    bool settings;
+    double mx, my;
+    string moveDate;
+    int moveMin;
+    static readonly string[] Palette = { "#1e90ff", "#e53935", "#43a047", "#fb8c00", "#8e24aa", "#00acc1", "#fdd835", "#757575" };
+
+    void Menu(Activity a, MouseEventArgs e)
+    {
+        menuAct = a; mx = e.ClientX; my = e.ClientY;
+        moveDate = a.Start.ToString("yyyy-MM-dd");
+        moveMin = (int)a.Start.TimeOfDay.TotalMinutes;
+    }
+
+    void Paint(string color) { S.SetColor(menuAct.Id, color); menuAct = null; }
+    void Delete() { S.Remove(menuAct.Id); menuAct = null; }
+
+    void DoMove()
+    {
+        if (DateTime.TryParseExact(moveDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            S.Move(menuAct.Id, d, moveMin);
+        menuAct = null;
+    }
+    DotNetObjectReference<App> self;
+
+    RenderFragment Nav(ViewMode v, string icon, string tip) => @<button class="@(S.View == v ? "on" : "")" title="@tip" @onclick="() => { S.View = v; S.Navigate(); }"><img src="@Ic(icon)" /></button>;
+
+    static string Px(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "px";
+    static string Pc(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";
+    static DateTime Monday(DateTime d) => d.Date.AddDays(-(((int)d.DayOfWeek + 6) % 7));
+
+    List<DateTime> Days()
+    {
+        if (S.View == ViewMode.Day) return new() { S.CurrentDate.Date };
+        var m = Monday(S.CurrentDate);
+        return Enumerable.Range(0, S.View == ViewMode.WorkWeek ? 5 : 7).Select(i => m.AddDays(i)).ToList();
+    }
+
+    string Title => S.View switch
+    {
+        ViewMode.Month => S.CurrentDate.ToString("MMMM yyyy", It),
+        ViewMode.Day => S.CurrentDate.ToString("dddd d MMMM yyyy", It),
+        _ => Days().First().ToString("d MMM", It) + " – " + Days().Last().ToString("d MMM yyyy", It)
+    };
+
+    void Step(int dir)
+    {
+        S.CurrentDate = S.View switch
+        {
+            ViewMode.Day => S.CurrentDate.AddDays(dir),
+            ViewMode.Month => S.CurrentDate.AddMonths(dir),
+            _ => S.CurrentDate.AddDays(7 * dir)
+        };
+        S.Navigate();
+    }
+
+    void SetKey(ColorRule r, ChangeEventArgs e) { r.Key = e.Value?.ToString() ?? ""; S.Touch(); }
+    void SetColor(ColorRule r, ChangeEventArgs e) { r.Color = e.Value?.ToString() ?? "#9e9e9e"; S.Touch(); }
+    void AddRule() { S.Rules.Add(new ColorRule { Key = "@nuovo.it", Color = "#ff9800" }); S.Touch(); }
+
+    void Today() { S.CurrentDate = DateTime.Today; S.Navigate(); }
+    void OpenDay(DateTime d) { S.CurrentDate = d; S.View = ViewMode.Day; S.Navigate(); }
+
+    protected override void OnInitialized() => S.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() { S.Changed -= OnChanged; self?.Dispose(); }
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (!first) return;
+        self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("orga.init", self);
+    }
+
+    [JSInvokable]
+    public void Move(string id, string slot)
+    {
+        var p = slot.Split('|');
+        S.Move(id, DateTime.ParseExact(p[0], "yyyy-MM-dd", CultureInfo.InvariantCulture), int.Parse(p[1]));
+    }
+
+    [JSInvokable]
+    public void Resize(string id, int minutes) => S.Resize(id, minutes);
+
+    [JSInvokable]
+    public void External(string slot)
+    {
+        var p = slot.Split('|');
+        S.RaiseExternalDrop(DateTime.ParseExact(p[0], "yyyy-MM-dd", CultureInfo.InvariantCulture), int.Parse(p[1]));
+    }
+}

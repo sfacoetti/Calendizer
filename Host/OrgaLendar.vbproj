@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>OrgaLendar</RootNamespace>
+    <UseWindowsForms>true</UseWindowsForms>
+    <MyType>WindowsFormsWithCustomSubMain</MyType>
+    <StartupObject>Sub Main</StartupObject>
+    <OptionStrict>On</OptionStrict>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="8.0.*" />
+    <ProjectReference Include="..\Core\OrgaLendar.Core.vbproj" />
+    <ProjectReference Include="..\UI\OrgaLendar.UI.csproj" />
+  </ItemGroup>
+</Project>
