@@ -63,6 +63,7 @@ Public Class StoreData
     ''' <summary>"auto" (segue Windows), "light" o "dark".</summary>
     Public Property Theme As String = "auto"
     Public Property HideDone As Boolean = False
+    Public Property Notch As Boolean = False
     Public Property LastArchive As String = ""
 End Class
 
@@ -206,6 +207,17 @@ Public Class CalendarState
         End Get
         Set(v As String)
             _data.Theme = v
+            Touch()
+        End Set
+    End Property
+
+    ''' <summary>Notch sul bordo destro dello schermo (la disegna l'Host).</summary>
+    Public Property Notch As Boolean
+        Get
+            Return _data.Notch
+        End Get
+        Set(v As Boolean)
+            _data.Notch = v
             Touch()
         End Set
     End Property

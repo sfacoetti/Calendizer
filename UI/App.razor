@@ -249,6 +249,14 @@
                     <option value="dark" selected="@(S.Theme == "dark")">Scuro</option>
                 </select>
             </div>
+            <label class="row tgl-row">
+                <input type="checkbox" class="tgl" checked="@StartupHelper.IsEnabled()" @onchange="e => StartupHelper.SetEnabled((bool)e.Value)" />
+                <span>Avvia con Windows (parte nascosta nell'area di notifica)</span>
+            </label>
+            <label class="row tgl-row">
+                <input type="checkbox" class="tgl" checked="@S.Notch" @onchange="e => S.Notch = (bool)e.Value" />
+                <span>Notch sul bordo destro dello schermo (compare dopo 3 secondi con il mouse sopra)</span>
+            </label>
             <div class="row">
                 <span class="lbl">Promemoria predefinito</span>
                 <select @onchange="e => S.DefaultReminder = int.Parse(e.Value.ToString())">
@@ -489,7 +497,7 @@
     }
     DotNetObjectReference<App> self;
 
-    RenderFragment Nav(ViewMode v, string icon, string tip) => @<button class="@(S.View == v ? "on" : "")" title="@tip" @onclick="() => { S.View = v; S.Navigate(); }"><img src="@Ic(icon)" /></button>;
+    RenderFragment Nav(ViewMode v, string icon, string tip) => @<button class="@(S.View == v ? "on" : "")" title="@tip" @onclick="() => { S.View = v; S.Navigate(); }"><img src="_content/OrgaLendar.UI/icons/@(icon).png" /></button>;
 
     static string Px(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "px";
     static string Pc(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";

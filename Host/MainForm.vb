@@ -30,7 +30,6 @@ Public Class MainForm
     Private ReadOnly _state As New CalendarState(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrgaLendar", "data.json"))
     Private ReadOnly _web As New BlazorWebView()
 
-    Private Const RunKey As String = "Software\Microsoft\Windows\CurrentVersion\Run"
     Private ReadOnly _tray As New NotifyIcon()
     Private ReadOnly _timer As New Timer() With {.Interval = 30000}
     Private ReadOnly _autostart As New ToolStripMenuItem("Avvia con Windows")
@@ -68,21 +67,23 @@ Public Class MainForm
         Return _alertIcon
     End Function
 
-    Private Function IsAutostart() As Boolean
-        Using k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey)
-            Return k IsNot Nothing AndAlso k.GetValue("OrgaLendar") IsNot Nothing
-        End Using
-    End Function
-
     Private Sub ToggleAutostart(sender As Object, e As EventArgs)
-        Using k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey)
-            If IsAutostart() Then
-                k.DeleteValue("OrgaLendar", False)
-            Else
-                k.SetValue("OrgaLendar", $"""{Application.ExecutablePath}"" --tray")
-            End If
-        End Using
-        _autostart.Checked = IsAutostart()
+        StartupHelper.SetEnabled(Not StartupHelper.IsEnabled())
+        _autostart.Checked = StartupHelper.IsEnabled()
+    End Sub
+
+    ' Notch sul bordo destro: si crea/distrugge in base all'opzione nelle impostazioni
+    Private _notch As NotchForm
+    Private Sub ApplyNotch()
+        If _state.Notch AndAlso _notch Is Nothing Then
+            _notch = New NotchForm(Icon)
+            AddHandler _notch.Opened, AddressOf ShowWindow
+            _notch.ShowNotch()
+        ElseIf Not _state.Notch AndAlso _notch IsNot Nothing Then
+            _notch.Close()
+            _notch.Dispose()
+            _notch = Nothing
+        End If
     End Sub
 
     Private Sub CheckReminders(sender As Object, e As EventArgs)
@@ -115,9 +116,9 @@ Public Class MainForm
         ' Area di notifica: chiudere la finestra la nasconde, si esce dal menu dell'icona
         _tray.Icon = Icon
         _tray.Text = "OrgaLendar"
-        _autostart.Checked = IsAutostart()
         AddHandler _autostart.Click, AddressOf ToggleAutostart
         Dim menu As New ContextMenuStrip()
+        AddHandler menu.Opening, Sub(s, e) _autostart.Checked = StartupHelper.IsEnabled() ' può essere cambiato dalle impostazioni
         menu.Items.Add("Apri", Nothing, Sub(s, e) ShowWindow())
         menu.Items.Add(_autostart)
         menu.Items.Add("Esci", Nothing, Sub(s, e)
@@ -131,12 +132,15 @@ Public Class MainForm
         AddHandler _timer.Tick, AddressOf CheckReminders
         _timer.Start()
         CheckReminders(Nothing, EventArgs.Empty) ' recupera subito i promemoria scattati ad app chiusa
+        AddHandler _state.Changed, Sub() BeginInvoke(AddressOf ApplyNotch)
+        ApplyNotch()
         AddHandler FormClosing, Sub(s, e)
                                     If Not _exiting AndAlso e.CloseReason = CloseReason.UserClosing Then
                                         e.Cancel = True
                                         Hide()
                                     Else
                                         _tray.Visible = False
+                                        _notch?.Close()
                                     End If
                                 End Sub
     End Sub

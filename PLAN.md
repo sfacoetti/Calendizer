@@ -20,7 +20,8 @@ Struttura: Core (VB, stato/dati/Outlook COM) | UI (C# RCL, solo .razor/js/css, R
 7. Esporta `.ics` (intervallo da/a, "Salva con nome") — formato controllato, importazione in Outlook da provare
 8. Robustezza: backup giornaliero di `data.json` (ultime 7) e pubblicazione `dotnet publish Host\OrgaLendar.vbproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o <cartella>` (exe + `wwwroot` + `WebView2Loader.dll`, serve .NET 8 Desktop Runtime) — backup e avvio dell'exe pubblicato provati
 9. Sincronizzazione a una via con Outlook: barra in alto, sottocartella "OrgaLendar" del calendario predefinito, evento riconosciuto da proprietà `OrgaId`; ciò che non corrisponde ad attività viene eliminato (Elementi eliminati) — corretta dopo duplicati e orfani, da riprovare
-10. Altro: una sola istanza (la seconda riporta in primo piano la prima), Esc chiude ogni popup + X in alto a destra, pulsanti moderni con icone, "Nascondi completate", ultima cartella di archivio salvata, conferma con Canc, pallino rosso sull'icona per promemoria non visti
+10. Impostazioni: interruttore "Avvia con Windows" (`StartupHelper`) e "Notch sul bordo destro" (`Host/NotchForm.vb`: striscia al centro del bordo destro dello schermo principale, dopo 3 s di mouse sopra diventa una pillola di vetro sfocato con l'icona; clic = apre l'app; icona nell'area di notifica mantenuta) — aspetto verificato con uno screenshot di prova, integrazione nell'app da provare
+11. Altro: una sola istanza (la seconda riporta in primo piano la prima), Esc chiude ogni popup + X in alto a destra, pulsanti moderni con icone, "Nascondi completate", ultima cartella di archivio salvata, conferma con Canc, pallino rosso sull'icona per promemoria non visti
 
 ## Da verificare a mano
 - Drag reale da Outlook classic su più monitor / DPI diversi

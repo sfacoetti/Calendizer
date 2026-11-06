@@ -47,3 +47,7 @@ SVG da Iconify: Streamline Plump Color e Streamline Flex Color (`UI/wwwroot/icon
 ## Sviluppo
 
 Vedi `PLAN.md` (piano, stato, verifiche da fare a mano, limiti noti).
+
+## Licenze
+
+Le icone del cestino (`trash.svg`) e di chiusura (`close.svg`) vengono dal set Streamline Sharp Color di Streamline (https://github.com/webalys-hq/streamline-vectors), licenza CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), tramite Iconify.
