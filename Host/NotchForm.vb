@@ -16,10 +16,11 @@ Public Class NotchForm
     Private Shared Function DwmSetWindowAttribute(hwnd As IntPtr, attr As Integer, ByRef value As Integer, size As Integer) As Integer
     End Function
 
-    Private Const DwellMs As Integer = 3000 ' permanenza sulla striscia prima che compaia: evita attivazioni per caso
+    ''' <summary>Permanenza del mouse sulla striscia prima che compaia la pillola (evita attivazioni per caso). Impostabile.</summary>
+    Public Property DwellMs As Integer = 1500
     Private Const LeaveMs As Integer = 600  ' tempo fuori dalla pillola prima che si ritiri
-    Private Const StripW As Single = 4
-    Private Const StripH As Single = 90
+    Private Const StripW As Single = 10
+    Private Const StripH As Single = 110
     Private Const PillW As Single = 76
     Private Const PillH As Single = 124
 
@@ -138,7 +139,8 @@ Public Class NotchForm
         Dim pos = Cursor.Position
         Dim s = Scr()
         Dim now = DateTime.Now
-        Dim zone As New Rectangle(s.Right - 6, s.Top + (s.Height - CInt(StripH * _scale)) \ 2, 6, CInt(StripH * _scale))
+        Dim zoneW = CInt(StripW * _scale) + 2
+        Dim zone As New Rectangle(s.Right - zoneW, s.Top + (s.Height - CInt(StripH * _scale)) \ 2, zoneW, CInt(StripH * _scale))
         If Not _expanded Then
             If Not zone.Contains(pos) Then
                 _needLeave = False
@@ -190,7 +192,7 @@ Public Class NotchForm
         ' bordo chiaro + riflesso nella metà alta: l'effetto "vetro"
         Using path = Shape(w, h)
             ' a riposo la striscia deve essere "appena visibile": riempimento chiaro che sfuma mentre la pillola si apre
-            Using fill As New SolidBrush(Color.FromArgb(CInt(170 * (1 - Progress())), 255, 255, 255))
+            Using fill As New SolidBrush(Color.FromArgb(CInt(150 * (1 - Progress())), 70, 130, 210)) ' azzurro traslucido: si vede su sfondi chiari e scuri
                 g.FillPath(fill, path)
             End Using
             Using edge As New Pen(Color.FromArgb(90, 40, 50, 70), 1.2F * _scale) ' bordo scuro: stacca il vetro dagli sfondi chiari

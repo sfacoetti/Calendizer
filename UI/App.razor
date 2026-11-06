@@ -257,6 +257,19 @@
                 <input type="checkbox" class="tgl" checked="@S.Notch" @onchange="e => S.Notch = (bool)e.Value" />
                 <span>Notch sul bordo destro dello schermo (compare dopo 3 secondi con il mouse sopra)</span>
             </label>
+            @if (S.Notch)
+            {
+                <div class="row">
+                    <span class="lbl">Attesa notch</span>
+                    <select @onchange="e => S.NotchDelay = double.Parse(e.Value.ToString(), CultureInfo.InvariantCulture)">
+                        @foreach (var d in NotchDelays)
+                        {
+                            <option value="@d.ToString(CultureInfo.InvariantCulture)" selected="@(d == S.NotchDelay)">@(d.ToString("0.#", It)) s</option>
+                        }
+                    </select>
+                    <span class="meta">con il mouse sulla striscia</span>
+                </div>
+            }
             <div class="row">
                 <span class="lbl">Promemoria predefinito</span>
                 <select @onchange="e => S.DefaultReminder = int.Parse(e.Value.ToString())">
@@ -483,6 +496,7 @@
             S.RequestExport(f, t);
     }
 
+    static readonly double[] NotchDelays = { 0.5, 1, 1.5, 2, 3, 5 };
     static readonly int[] Reminders = { 0, 5, 15, 30 };
     static string RemLabel(int m) => m == 0 ? "Nessuno" : $"{m} min prima";
     void SetReminder(string v) { S.SetReminder(menuAct.Id, string.IsNullOrEmpty(v) ? null : int.Parse(v)); menuAct = null; }

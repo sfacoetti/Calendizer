@@ -79,7 +79,9 @@ Public Class MainForm
             _notch = New NotchForm(Icon)
             AddHandler _notch.Opened, AddressOf ShowWindow
             _notch.ShowNotch()
-        ElseIf Not _state.Notch AndAlso _notch IsNot Nothing Then
+        End If
+        If _notch IsNot Nothing Then _notch.DwellMs = CInt(_state.NotchDelay * 1000)
+        If Not _state.Notch AndAlso _notch IsNot Nothing Then
             _notch.Close()
             _notch.Dispose()
             _notch = Nothing

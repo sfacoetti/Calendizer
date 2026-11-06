@@ -64,6 +64,7 @@ Public Class StoreData
     Public Property Theme As String = "auto"
     Public Property HideDone As Boolean = False
     Public Property Notch As Boolean = False
+    Public Property NotchDelay As Double = 1.5
     Public Property LastArchive As String = ""
 End Class
 
@@ -218,6 +219,17 @@ Public Class CalendarState
         End Get
         Set(v As Boolean)
             _data.Notch = v
+            Touch()
+        End Set
+    End Property
+
+    ''' <summary>Secondi di permanenza del mouse sulla striscia prima che compaia la notch.</summary>
+    Public Property NotchDelay As Double
+        Get
+            Return _data.NotchDelay
+        End Get
+        Set(v As Double)
+            _data.NotchDelay = v
             Touch()
         End Set
     End Property
