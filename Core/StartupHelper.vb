@@ -1,7 +1,7 @@
 ''' <summary>Avvio con Windows tramite la chiave Run dell'utente (nessun permesso di amministratore). L'app parte nascosta con --tray.</summary>
 Public Module StartupHelper
     Private Const RunKey As String = "Software\Microsoft\Windows\CurrentVersion\Run"
-    Private Const ValueName As String = "OrgaLendar"
+    Private Const ValueName As String = "Calendizer"
 
     Public Function IsEnabled() As Boolean
         Using k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey)

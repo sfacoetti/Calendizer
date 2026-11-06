@@ -128,9 +128,9 @@ Public Module OutlookHelper
         End Try
     End Function
 
-    Private Const CalName As String = "OrgaLendar"
+    Private Const CalName As String = "Calendizer"
 
-    ' Il calendario "OrgaLendar" è una sottocartella del calendario predefinito: mai si tocca il calendario vero
+    ' Il calendario "Calendizer" è una sottocartella del calendario predefinito: mai si tocca il calendario vero
     Private Function GetSyncFolder(app As Object) As Object
         Dim cal As Object = app.Session.GetDefaultFolder(9) ' olFolderCalendar
         For i = 1 To CInt(cal.Folders.Count)
@@ -139,7 +139,7 @@ Public Module OutlookHelper
         Return cal.Folders.Add(CalName, 9)
     End Function
 
-    ''' <summary>Evento già collegato all'attività, solo se sta davvero nel calendario OrgaLendar.</summary>
+    ''' <summary>Evento già collegato all'attività, solo se sta davvero nel calendario Calendizer.</summary>
     Private Function FindEvent(app As Object, folder As Object, id As String) As Object
         If String.IsNullOrEmpty(id) Then Return Nothing
         Try
@@ -167,9 +167,9 @@ Public Module OutlookHelper
     End Function
 
     ''' <summary>
-    ''' Rende il calendario OrgaLendar uguale all'app: un evento per attività, riconosciuto dalla proprietà nascosta OrgaId.
+    ''' Rende il calendario Calendizer uguale all'app: un evento per attività, riconosciuto dalla proprietà nascosta OrgaId.
     ''' Quello che nella cartella non corrisponde a nessuna attività (eliminate, duplicati, eventi senza OrgaId) viene eliminato
-    ''' (finisce in Elementi eliminati). La cartella è solo di OrgaLendar: non metterci eventi propri.
+    ''' (finisce in Elementi eliminati). La cartella è solo di Calendizer: non metterci eventi propri.
     ''' </summary>
     Public Function SyncCalendar(items As List(Of Activity)) As String
         Dim app As Object = CreateObject("Outlook.Application")
@@ -204,7 +204,7 @@ Public Module OutlookHelper
                     ev.Start = a.Start
                     ev.End = a.EndTime()
                     ev.Body = body
-                    ev.ReminderSet = False ' i promemoria li gestisce OrgaLendar
+                    ev.ReminderSet = False ' i promemoria li gestisce Calendizer
                     ev.Save()
                     If isNew Then created += 1 Else updated += 1
                 End If

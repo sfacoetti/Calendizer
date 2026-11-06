@@ -24,7 +24,7 @@
             <h2>@Title</h2>
             <span class="grow"></span>
             <button class="pill ibtn @(S.HideDone ? "on" : "")" title="Nascondi le attività completate" @onclick="() => S.HideDone = !S.HideDone"><img src="@Ic("confirm")" />Nascondi completate</button>
-            <button class="tool" disabled="@syncing" title="Copia le attività nel calendario Outlook «OrgaLendar» (sottocartella del calendario predefinito). Una via: le modifiche fatte in Outlook non tornano qui." @onclick="DoSync">
+            <button class="tool" disabled="@syncing" title="Copia le attività nel calendario Outlook «Calendizer» (sottocartella del calendario predefinito). Una via: le modifiche fatte in Outlook non tornano qui." @onclick="DoSync">
                 <img class="@(syncing ? "spin" : "")" src="@Ic("sync")" />@(syncing ? "Sincronizzazione…" : "Sincronizza con Outlook")
             </button>
         </header>
@@ -304,7 +304,7 @@
 }
 
 @code {
-    static string Ic(string n) => $"_content/OrgaLendar.UI/icons/{n}.svg";
+    static string Ic(string n) => $"_content/Calendizer.UI/icons/{n}.svg";
     static readonly CultureInfo It = new("it-IT");
     Activity mail, menuAct;
     string selected;
@@ -511,7 +511,7 @@
     }
     DotNetObjectReference<App> self;
 
-    RenderFragment Nav(ViewMode v, string icon, string tip) => @<button class="@(S.View == v ? "on" : "")" title="@tip" @onclick="() => { S.View = v; S.Navigate(); }"><img src="_content/OrgaLendar.UI/icons/@(icon).png" /></button>;
+    RenderFragment Nav(ViewMode v, string icon, string tip) => @<button class="@(S.View == v ? "on" : "")" title="@tip" @onclick="() => { S.View = v; S.Navigate(); }"><img src="_content/Calendizer.UI/icons/@(icon).png" /></button>;
 
     static string Px(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "px";
     static string Pc(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Core/">
+    <Project Path="Core/Calendizer.Core.vbproj" />
+  </Folder>
+  <Folder Name="/Host/">
+    <Project Path="Host/Calendizer.vbproj" />
+  </Folder>
+  <Folder Name="/UI/">
+    <Project Path="UI/Calendizer.UI.csproj" />
+  </Folder>
+</Solution>

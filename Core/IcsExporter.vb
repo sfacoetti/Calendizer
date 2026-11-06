@@ -32,10 +32,10 @@ Public Module IcsExporter
         Dim stamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'")
         AddLine(sb, "BEGIN:VCALENDAR")
         AddLine(sb, "VERSION:2.0")
-        AddLine(sb, "PRODID:-//OrgaLendar//IT")
+        AddLine(sb, "PRODID:-//Calendizer//IT")
         For Each a In items
             AddLine(sb, "BEGIN:VEVENT")
-            AddLine(sb, "UID:" & a.Id & "@orgalendar")
+            AddLine(sb, "UID:" & a.Id & "@calendizer")
             AddLine(sb, "DTSTAMP:" & stamp)
             AddLine(sb, "DTSTART:" & a.Start.ToString(Fmt))
             AddLine(sb, "DTEND:" & a.EndTime().ToString(Fmt))
@@ -45,7 +45,7 @@ Public Module IcsExporter
             If Not String.IsNullOrEmpty(a.MailMessageId) Then desc.Add("Message-ID: " & a.MailMessageId)
             If Not String.IsNullOrEmpty(a.Body) Then desc.Add(a.Body)
             If desc.Count > 0 Then AddLine(sb, "DESCRIPTION:" & Esc(String.Join(vbLf, desc)))
-            If a.Done Then AddLine(sb, "X-ORGALENDAR-DONE:TRUE")
+            If a.Done Then AddLine(sb, "X-CALENDIZER-DONE:TRUE")
             AddLine(sb, "END:VEVENT")
         Next
         AddLine(sb, "END:VCALENDAR")

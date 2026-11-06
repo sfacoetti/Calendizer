@@ -16,7 +16,7 @@ Public Class Activity
     Public Property Body As String = ""
     ' Collegamento alla mail Outlook; vuoti per attività libere e per quelle create prima di questa funzione
     Public Property Done As Boolean = False
-    ''' <summary>EntryID dell'evento nel calendario Outlook "OrgaLendar" (sincronizzazione a una via); vuoto = mai sincronizzata.</summary>
+    ''' <summary>EntryID dell'evento nel calendario Outlook "Calendizer" (sincronizzazione a una via); vuoto = mai sincronizzata.</summary>
     Public Property OutlookEventId As String = ""
     ''' <summary>Preavviso in minuti per questa attività; Nothing = usa quello predefinito, 0 = nessuno.</summary>
     Public Property Reminder As Integer?

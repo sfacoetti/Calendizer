@@ -6,6 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <ProjectReference Include="..\Core\OrgaLendar.Core.vbproj" />
+    <ProjectReference Include="..\Core\Calendizer.Core.vbproj" />
   </ItemGroup>
 </Project>

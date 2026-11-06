@@ -4,7 +4,7 @@ Imports System.Windows.Forms
 Imports Microsoft.AspNetCore.Components.WebView
 Imports Microsoft.AspNetCore.Components.WebView.WindowsForms
 Imports Microsoft.Extensions.DependencyInjection
-Imports OrgaLendar.Core
+Imports Calendizer.Core
 
 Public Module Program
     <STAThread>
@@ -13,8 +13,8 @@ Public Module Program
         Application.EnableVisualStyles()
         ' Una sola istanza: la seconda avvisa la prima di mostrarsi ed esce
         Dim createdNew As Boolean
-        Using instanceLock As New Threading.Mutex(True, "OrgaLendar.SingleInstance", createdNew)
-            Dim showEvt As New Threading.EventWaitHandle(False, Threading.EventResetMode.AutoReset, "OrgaLendar.Show")
+        Using instanceLock As New Threading.Mutex(True, "Calendizer.SingleInstance", createdNew)
+            Dim showEvt As New Threading.EventWaitHandle(False, Threading.EventResetMode.AutoReset, "Calendizer.Show")
             If Not createdNew Then
                 showEvt.Set()
                 Return
@@ -27,7 +27,7 @@ End Module
 Public Class MainForm
     Inherits Form
 
-    Private ReadOnly _state As New CalendarState(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrgaLendar", "data.json"))
+    Private ReadOnly _state As New CalendarState(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Calendizer", "data.json"))
     Private ReadOnly _web As New BlazorWebView()
 
     Private ReadOnly _tray As New NotifyIcon()
@@ -93,14 +93,14 @@ Public Class MainForm
         If due.Count = 0 Then Return
         Dim lines = due.Take(5).Select(Function(a) $"{a.Start:HH:mm} {a.Title}")
         If Not Visible Then _tray.Icon = AlertIcon() ' finestra nascosta: il pallino resta finché non la apri
-        _tray.ShowBalloonTip(10000, "OrgaLendar", String.Join(vbLf, lines) & If(due.Count > 5, vbLf & $"…e altre {due.Count - 5}", ""), ToolTipIcon.Info)
+        _tray.ShowBalloonTip(10000, "Calendizer", String.Join(vbLf, lines) & If(due.Count > 5, vbLf & $"…e altre {due.Count - 5}", ""), ToolTipIcon.Info)
     End Sub
 
     Public Sub New(startHidden As Boolean, showEvt As Threading.EventWaitHandle)
         _startHidden = startHidden
         CreateHandle() ' serve già ora (anche con avvio nascosto) per ricevere la richiesta della seconda istanza
         Threading.ThreadPool.RegisterWaitForSingleObject(showEvt, Sub(s, t) BeginInvoke(AddressOf ShowWindow), Nothing, -1, False)
-        Text = "OrgaLendar"
+        Text = "Calendizer"
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath)
         Width = 1300
         Height = 820
@@ -111,13 +111,13 @@ Public Class MainForm
         _web.HostPage = "wwwroot\index.html"
         _web.Services = sc.BuildServiceProvider()
         _web.Dock = DockStyle.Fill
-        _web.RootComponents.Add(Of OrgaLendar.UI.App)("#app", Nothing)
+        _web.RootComponents.Add(Of Calendizer.UI.App)("#app", Nothing)
         Controls.Add(_web)
         _web.BlazorWebViewInitialized = AddressOf OnWebInit ' nel pacchetto è un campo delegato, non un Event
 
         ' Area di notifica: chiudere la finestra la nasconde, si esce dal menu dell'icona
         _tray.Icon = Icon
-        _tray.Text = "OrgaLendar"
+        _tray.Text = "Calendizer"
         AddHandler _autostart.Click, AddressOf ToggleAutostart
         Dim menu As New ContextMenuStrip()
         AddHandler menu.Opening, Sub(s, e) _autostart.Checked = StartupHelper.IsEnabled() ' può essere cambiato dalle impostazioni
@@ -156,16 +156,16 @@ Public Class MainForm
         BeginInvoke(Sub()
                         Dim items = _state.Activities.Where(Function(a) a.Start.Date >= fromDay.Date AndAlso a.Start.Date <= toDay.Date).OrderBy(Function(a) a.Start).ToList()
                         If items.Count = 0 Then
-                            MessageBox.Show("Nessuna attività nell'intervallo scelto.", "OrgaLendar")
+                            MessageBox.Show("Nessuna attività nell'intervallo scelto.", "Calendizer")
                             Return
                         End If
-                        Using dlg As New SaveFileDialog() With {.Filter = "Calendario (*.ics)|*.ics", .FileName = "OrgaLendar.ics", .DefaultExt = "ics"}
+                        Using dlg As New SaveFileDialog() With {.Filter = "Calendario (*.ics)|*.ics", .FileName = "Calendizer.ics", .DefaultExt = "ics"}
                             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
                             Try
                                 IcsExporter.Save(items, dlg.FileName)
-                                MessageBox.Show($"Esportate {items.Count} attività in {dlg.FileName}", "OrgaLendar")
+                                MessageBox.Show($"Esportate {items.Count} attività in {dlg.FileName}", "Calendizer")
                             Catch ex As Exception
-                                MessageBox.Show("Impossibile salvare il file: " & ex.Message, "OrgaLendar", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                                MessageBox.Show("Impossibile salvare il file: " & ex.Message, "Calendizer", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                             End Try
                         End Using
                     End Sub)
@@ -180,14 +180,14 @@ Public Class MainForm
                         Try
                             Dim mails = OutlookHelper.GetSelectedMails()
                             If mails.Count = 0 Then
-                                MessageBox.Show("Nessuna mail selezionata in Outlook.", "OrgaLendar")
+                                MessageBox.Show("Nessuna mail selezionata in Outlook.", "Calendizer")
                                 Return
                             End If
                             For Each m In mails
                                 _state.AddMail(m, day, minutes)
                             Next
                         Catch ex As Exception
-                            MessageBox.Show("Impossibile leggere la mail da Outlook: " & ex.Message, "OrgaLendar", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                            MessageBox.Show("Impossibile leggere la mail da Outlook: " & ex.Message, "Calendizer", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                         End Try
                     End Sub)
     End Sub

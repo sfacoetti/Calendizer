@@ -1,4 +1,4 @@
-# OrgaLendar
+# Calendizer
 
 Calendario desktop per Windows per trasformare le email di Outlook (classic) in attività. VB.NET WinForms + Blazor WebView.
 
@@ -33,12 +33,12 @@ Il drop esterno (Outlook) è ricevuto dalla pagina, che calcola lo slot e avvisa
 
 ```
 dotnet build
-Host\bin\Debug\net8.0-windows\OrgaLendar.exe
+Host\bin\Debug\net8.0-windows\Calendizer.exe
 ```
 
 ## Dati
 
-`%AppData%\OrgaLendar\data.json` (attività e regole colore). Se il file è illeggibile viene copiato in `data.json.bak` prima di ripartire vuoti.
+`%AppData%\Calendizer\data.json` (attività e regole colore). Se il file è illeggibile viene copiato in `data.json.bak` prima di ripartire vuoti.
 
 ## Icone
 
