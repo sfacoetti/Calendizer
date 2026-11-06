@@ -13,15 +13,20 @@
             @Nav(ViewMode.Week, "week", "Settimana")
             @Nav(ViewMode.Month, "month", "Mese")
             <div class="sp"></div>
-            <button title="Impostazioni" @onclick="() => settings = true"><img src="@Ic("settings")" /></button>
+            <button title="Impostazioni" @onclick="OpenSettings"><img src="@Ic("settings")" /></button>
         }
     </nav>
     <div class="main">
         <header>
-            <button @onclick="() => Step(-1)">‹</button>
-            <button @onclick="Today">Oggi</button>
-            <button @onclick="() => Step(1)">›</button>
+            <button class="rnd" title="Precedente" @onclick="() => Step(-1)">‹</button>
+            <button class="pill" @onclick="Today">Oggi</button>
+            <button class="rnd" title="Successivo" @onclick="() => Step(1)">›</button>
             <h2>@Title</h2>
+            <span class="grow"></span>
+            <button class="pill ibtn @(S.HideDone ? "on" : "")" title="Nascondi le attività completate" @onclick="() => S.HideDone = !S.HideDone"><img src="@Ic("confirm")" />Nascondi completate</button>
+            <button class="tool" disabled="@syncing" title="Copia le attività nel calendario Outlook «OrgaLendar» (sottocartella del calendario predefinito). Una via: le modifiche fatte in Outlook non tornano qui." @onclick="DoSync">
+                <img class="@(syncing ? "spin" : "")" src="@Ic("sync")" />@(syncing ? "Sincronizzazione…" : "Sincronizza con Outlook")
+            </button>
         </header>
 
         @if (S.View == ViewMode.Month)
@@ -39,12 +44,12 @@
                     <div class="mc @(d.Month != first.Month ? "other" : "") @(d == DateTime.Today ? "today" : "")"
                          data-day="@d.ToString("yyyy-MM-dd")" data-month="1" @ondblclick="() => OpenDay(d)">
                         <div class="n">@d.Day</div>
-                        @foreach (var a in S.Activities.Where(x => x.Start.Date == d).OrderBy(x => x.Start))
+                        @foreach (var a in S.Activities.Where(x => x.Start.Date == d && !(S.HideDone && x.Done)).OrderBy(x => x.Start))
                         {
-                            <div class="chip" draggable="true" data-id="@a.Id" title="@a.Sender"
+                            <div class="chip @(a.Done ? "done" : "")" draggable="true" data-id="@a.Id" title="@a.Sender"
                                  style="background:@S.ColorOf(a)40;border-color:@S.ColorOf(a)"
                                  @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
-                                 @onclick="() => mail = a">@a.Start.ToString("HH:mm") @a.Title</div>
+                                 @onclick="() => mail = a">@if (a.Done) {<img class="ok" src="@Ic("confirm")" />}@a.Start.ToString("HH:mm") @a.Title</div>
                         }
                     </div>
                 }
@@ -84,11 +89,11 @@
                                 var span = CalendarState.LastMinute - CalendarState.FirstMinute;
                                 var top = (a.Start.TimeOfDay.TotalMinutes - CalendarState.FirstMinute) * 100.0 / span;
                                 var h = a.Minutes * 100.0 / span;
-                                <div class="act @(selected == a.Id ? "sel" : "")" draggable="true" data-id="@a.Id" @onclick="() => SelectAct(a)" @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
+                                <div class="act @(selected == a.Id ? "sel" : "") @(a.Done ? "done" : "")" draggable="true" data-id="@a.Id" @onclick="() => SelectAct(a)" @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
                                      style="top:@Pc(top);height:calc(@Pc(h) - 2px);left:@Pc(li.Col * 100.0 / li.Cols);width:@Pc(100.0 / li.Cols);background:@(c)40;border-color:@c">
-                                    <div class="at">@a.Title</div>
+                                    <div class="at">@if (a.Done) {<img class="ok" src="@Ic("confirm")" />}@a.Title</div>
                                     <div class="as">@(string.IsNullOrEmpty(a.Sender) ? a.Body : a.Sender)</div>
-                                    <span class="view" title="Mostra testo" @onclick="() => mail = a"><img src="@Ic("mail")" /></span>
+                                    <span class="view" title="Mostra testo (doppio clic: apri in Outlook)" @onclick="() => ViewClick(a)" @ondblclick="() => OpenInOutlook(a)"><img src="@Ic("mail")" /></span>
                                     <div class="rz"></div>
                                 </div>
                             }
@@ -137,7 +142,7 @@
 @if (menuAct != null)
 {
     <div class="ctx-bg" @onclick="() => menuAct = null" @oncontextmenu="() => menuAct = null" @oncontextmenu:preventDefault></div>
-    <div class="ctx" style="left:min(@Px(mx), calc(100vw - 260px));top:min(@Px(my), calc(100vh - 230px))">
+    <div class="ctx" style="left:min(@Px(mx), calc(100vw - 260px));top:min(@Px(my), calc(100vh - 340px))">
         <div class="ctx-t">@menuAct.Title</div>
         <div class="sws">
             @foreach (var c in Palette)
@@ -150,6 +155,22 @@
             <button @onclick="() => Paint(string.Empty)">Automatico</button>
             <span class="grow"></span>
             <button class="trash" title="Elimina attività" @onclick="Delete"><img src="@Ic("trash")" /></button>
+        </div>
+        @if (!string.IsNullOrEmpty(menuAct.MailEntryId))
+        {
+            <button class="ibtn" @onclick="() => OpenInOutlook(menuAct)"><img src="@Ic("mail")" />Apri in Outlook</button>
+            <button class="ibtn" @onclick="() => OpenArchive(menuAct)"><img src="@Ic("mail")" />Archivia in…</button>
+        }
+        <button class="ibtn" @onclick="ToggleDone"><img src="@Ic("confirm")" />@(menuAct.Done ? "Riapri" : "Completata")</button>
+        <div class="row">
+            <span class="lbl">Promemoria</span>
+            <select @onchange="e => SetReminder(e.Value?.ToString())">
+                <option value="" selected="@(menuAct.Reminder == null)">Predefinito (@RemLabel(S.DefaultReminder))</option>
+                @foreach (var r in Reminders)
+                {
+                    <option value="@r" selected="@(menuAct.Reminder == r)">@RemLabel(r)</option>
+                }
+            </select>
         </div>
         <hr />
         <div class="lbl">Sposta a</div>
@@ -166,16 +187,50 @@
     </div>
 }
 
+@if (archAct != null)
+{
+    <div class="modal-bg" @onclick="() => archAct = null">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="mtop"><h3>Archivia mail in…</h3><button class="xbtn" title="Chiudi" @onclick="() => archAct = null"><img src="@Ic("close")" /></button></div>
+            <div class="meta">@archAct.Title</div>
+            <div class="row">
+                <span class="lbl">Casella</span>
+                <select class="grow" @onchange="e => StoreChanged(e.Value?.ToString())">
+                    @foreach (var s in stores)
+                    {
+                        <option value="@s.StoreId" selected="@(s.StoreId == archStore)">@s.Path</option>
+                    }
+                </select>
+            </div>
+            @if (archLoading)
+            {
+                <div class="meta">Caricamento cartelle da Outlook… (può richiedere fino a un minuto la prima volta)</div>
+            }
+            <select @onchange="e => archFolder = e.Value?.ToString()" disabled="@archLoading">
+                @foreach (var f in folders)
+                {
+                    <option value="@f.EntryId" selected="@(f.EntryId == archFolder)">@f.Path</option>
+                }
+            </select>
+            <div class="btns"><button class="ibtn" disabled="@(archFolder == null || archLoading)" @onclick="DoArchive"><img src="@Ic("confirm")" />Archivia</button></div>
+        </div>
+    </div>
+}
+
 @if (mail != null)
 {
     <div class="modal-bg" @onclick="() => mail = null">
         <div class="modal" @onclick:stopPropagation>
-            <h3>@mail.Title</h3>
+            <div class="mtop"><h3>@mail.Title</h3><button class="xbtn" title="Chiudi" @onclick="() => mail = null"><img src="@Ic("close")" /></button></div>
             <div class="meta">@if (!string.IsNullOrEmpty(mail.Sender)) {<text>Da: @mail.Sender &lt;@mail.SenderEmail&gt;<br /></text>}@mail.Start.ToString("f", It) (@mail.Minutes min)</div>
             <pre>@mail.Body</pre>
             <div class="btns">
+                @if (!string.IsNullOrEmpty(mail.MailEntryId))
+                {
+                    <button class="ibtn" @onclick="() => OpenInOutlook(mail)"><img src="@Ic("mail")" />Apri in Outlook</button>
+                    <button class="ibtn" @onclick="() => OpenArchive(mail)"><img src="@Ic("mail")" />Archivia in…</button>
+                }
                 <button class="trash" title="Elimina attività" @onclick="() => { S.Remove(mail.Id); mail = null; }"><img src="@Ic("trash")" /></button>
-                <button class="xbtn" title="Chiudi" @onclick="() => mail = null"><img src="@Ic("close")" /></button>
             </div>
         </div>
     </div>
@@ -185,6 +240,31 @@
 {
     <div class="modal-bg" @onclick="() => settings = false">
         <div class="modal" @onclick:stopPropagation>
+            <div class="mtop"><h3>Impostazioni</h3><button class="xbtn" title="Chiudi" @onclick="() => settings = false"><img src="@Ic("close")" /></button></div>
+            <div class="row">
+                <span class="lbl">Tema</span>
+                <select @onchange="e => SetTheme(e.Value?.ToString())">
+                    <option value="auto" selected="@(S.Theme == "auto")">Segui Windows</option>
+                    <option value="light" selected="@(S.Theme == "light")">Chiaro</option>
+                    <option value="dark" selected="@(S.Theme == "dark")">Scuro</option>
+                </select>
+            </div>
+            <div class="row">
+                <span class="lbl">Promemoria predefinito</span>
+                <select @onchange="e => S.DefaultReminder = int.Parse(e.Value.ToString())">
+                    @foreach (var r in Reminders)
+                    {
+                        <option value="@r" selected="@(r == S.DefaultReminder)">@RemLabel(r)</option>
+                    }
+                </select>
+            </div>
+            <div class="row">
+                <span class="lbl">Esporta</span>
+                <input type="date" value="@expFrom" @onchange="e => expFrom = e.Value?.ToString()" />
+                <span>–</span>
+                <input type="date" value="@expTo" @onchange="e => expTo = e.Value?.ToString()" />
+                <button class="ibtn" title="Esporta in .ics (importabile in Outlook)" @onclick="DoExport"><img src="@Ic("export")" />Esporta .ics</button>
+            </div>
             <h3>Colori per mittente</h3>
             <div class="meta">Dominio (es. @@hexpol.com) o indirizzo completo. L'indirizzo ha la precedenza.</div>
             @foreach (var r in S.Rules.ToList())
@@ -196,8 +276,7 @@
                 </div>
             }
             <div class="btns">
-                <button @onclick="AddRule">+ Aggiungi</button>
-                <button @onclick="() => settings = false">Chiudi</button>
+                <button class="ibtn" @onclick="AddRule"><img src="@Ic("add")" />Aggiungi</button>
             </div>
         </div>
     </div>
@@ -240,9 +319,18 @@
     [JSInvokable]
     public void EnterKey()
     {
-        if (selDay == null || mail != null || settings || newDlg || menuAct != null) return;
+        if (selDay == null || mail != null || settings || newDlg || menuAct != null || archAct != null) return;
         int lo = Math.Min(selA, selB), hi = Math.Max(selA, selB);
         OpenNew(selDay.Value, CalendarState.FirstMinute + lo * 30, (hi - lo + 1) * 30);
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void EscKey()
+    {
+        if (mail == null && !settings && !newDlg && menuAct == null && archAct == null) return;
+        mail = null; settings = false; menuAct = null; archAct = null;
+        if (newDlg) CloseNew();
         InvokeAsync(StateHasChanged);
     }
 
@@ -263,11 +351,13 @@
 
     // Canc: elimina l'attività del menu aperto, altrimenti quella selezionata (mai con un dialogo aperto)
     [JSInvokable]
-    public void DeleteKey()
+    public async Task DeleteKey()
     {
-        if (mail != null || settings || newDlg) return;
+        if (mail != null || settings || newDlg || archAct != null) return;
         var id = menuAct?.Id ?? selected;
         if (id == null) return;
+        var title = S.Activities.FirstOrDefault(x => x.Id == id)?.Title;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Eliminare l'attività «{title}»?")) return;
         menuAct = null; selected = null;
         S.Remove(id);
     }
@@ -285,6 +375,110 @@
     }
 
     void Paint(string color) { S.SetColor(menuAct.Id, color); menuAct = null; }
+    // Il popup si apre dopo una breve attesa: se arriva il secondo clic (doppio clic) l'attesa viene annullata
+    CancellationTokenSource viewCts;
+    async Task ViewClick(Activity a)
+    {
+        viewCts?.Cancel();
+        viewCts = new CancellationTokenSource();
+        try { await Task.Delay(250, viewCts.Token); mail = a; }
+        catch (TaskCanceledException) { }
+    }
+
+    async Task OpenInOutlook(Activity a)
+    {
+        viewCts?.Cancel();
+        mail = null; menuAct = null;
+        var err = OutlookHelper.OpenMail(a);
+        S.Touch(); // salva il collegamento se è stato aggiornato dalla ricerca per Message-ID
+        if (err != null) await JS.InvokeVoidAsync("alert", err);
+    }
+
+    Activity archAct;
+    List<FolderInfo> stores = new(), folders = new();
+    string archStore, archFolder;
+    bool archLoading;
+    static readonly Dictionary<string, List<FolderInfo>> folderCache = new(); // la lettura è lenta: una volta per archivio
+
+    async Task OpenArchive(Activity a)
+    {
+        mail = null; menuAct = null;
+        archAct = a; stores = new(); folders = new(); archFolder = null; archLoading = true;
+        StateHasChanged();
+        try
+        {
+            // fuori dal thread della UI: Outlook può metterci decine di secondi
+            stores = await Task.Run(OutlookHelper.ListStores);
+            archStore = stores.Any(s => s.StoreId == a.MailStoreId) ? a.MailStoreId : stores.FirstOrDefault()?.StoreId;
+            await LoadFolders();
+        }
+        catch (Exception ex) { archAct = null; await JS.InvokeVoidAsync("alert", "Impossibile leggere Outlook: " + ex.Message); }
+        archLoading = false;
+    }
+
+    async Task LoadFolders()
+    {
+        folders = new(); archFolder = null;
+        if (archStore == null) return;
+        var store = archStore;
+        if (!folderCache.TryGetValue(store, out var list))
+        {
+            archLoading = true; StateHasChanged();
+            list = (await Task.Run(() => OutlookHelper.ListFolders(store))).OrderBy(f => f.Path).ToList();
+            folderCache[store] = list;
+        }
+        archLoading = false;
+        if (archAct == null || store != archStore) return; // popup chiuso o archivio cambiato nel frattempo
+        folders = list;
+        archFolder = list.Any(f => f.EntryId == S.LastArchive) ? S.LastArchive : list.FirstOrDefault()?.EntryId;
+    }
+
+    async Task StoreChanged(string id) { archStore = id; await LoadFolders(); }
+
+    async Task DoArchive()
+    {
+        var f = folders.FirstOrDefault(x => x.EntryId == archFolder);
+        if (f == null) return;
+        var a = archAct; archAct = null;
+        S.LastArchive = f.EntryId;
+        var err = OutlookHelper.MoveMail(a, f.EntryId, f.StoreId);
+        S.Touch();
+        if (err != null) await JS.InvokeVoidAsync("alert", err);
+    }
+    bool syncing;
+
+    async Task DoSync()
+    {
+        syncing = true; StateHasChanged();
+        string msg;
+        try { msg = await Task.Run(S.SyncOutlook); } // lenta: fuori dal thread della UI
+        catch (Exception ex) { msg = "Sincronizzazione non riuscita: " + ex.Message; }
+        syncing = false;
+        await JS.InvokeVoidAsync("alert", msg);
+    }
+
+    string expFrom, expTo;
+
+    // Intervallo di esportazione precompilato con tutte le attività: per esportare tutto basta un clic
+    void OpenSettings()
+    {
+        var d = S.Activities.Select(a => a.Start.Date).ToList();
+        expFrom = (d.Count > 0 ? d.Min() : DateTime.Today).ToString("yyyy-MM-dd");
+        expTo = (d.Count > 0 ? d.Max() : DateTime.Today).ToString("yyyy-MM-dd");
+        settings = true;
+    }
+
+    void DoExport()
+    {
+        if (DateTime.TryParseExact(expFrom, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var f) &&
+            DateTime.TryParseExact(expTo, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) && f <= t)
+            S.RequestExport(f, t);
+    }
+
+    static readonly int[] Reminders = { 0, 5, 15, 30 };
+    static string RemLabel(int m) => m == 0 ? "Nessuno" : $"{m} min prima";
+    void SetReminder(string v) { S.SetReminder(menuAct.Id, string.IsNullOrEmpty(v) ? null : int.Parse(v)); menuAct = null; }
+    void ToggleDone() { S.ToggleDone(menuAct.Id); menuAct = null; }
     void Delete() { S.Remove(menuAct.Id); menuAct = null; }
 
     void DoMove()
@@ -342,6 +536,13 @@
         if (!first) return;
         self = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("orga.init", self);
+        await JS.InvokeVoidAsync("orga.setTheme", S.Theme);
+    }
+
+    async Task SetTheme(string t)
+    {
+        S.Theme = t;
+        await JS.InvokeVoidAsync("orga.setTheme", t);
     }
 
     [JSInvokable]

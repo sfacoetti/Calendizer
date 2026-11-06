@@ -46,4 +46,4 @@ SVG da Iconify: Streamline Plump Color e Streamline Flex Color (`UI/wwwroot/icon
 
 ## Sviluppo
 
-Vedi `todo.md` (prossimi passi, decisioni, verifiche) e `PLAN.md` (piano iniziale e stato).
+Vedi `PLAN.md` (piano, stato, verifiche da fare a mano, limiti noti).

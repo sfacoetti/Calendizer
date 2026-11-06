@@ -82,6 +82,10 @@ window.orga = (function () {
         if (e.key !== 'Enter' || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target.tagName) || !dotnet) return;
         dotnet.invokeMethodAsync('EnterKey');
     });
+    // Esc: chiude il popup aperto (anche con il focus in un campo)
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && dotnet) dotnet.invokeMethodAsync('EscKey');
+    });
     document.addEventListener('dragend', () => { drag = null; hideGhost(); });
 
     document.addEventListener('pointerdown', e => {
@@ -104,5 +108,10 @@ window.orga = (function () {
         h.addEventListener('pointerup', up);
     });
 
-    return { init: ref => { dotnet = ref; }, slotAt };
+    // Tema: "light" / "dark" come attributo sulla radice, "auto" lo toglie (il CSS segue Windows)
+    function setTheme(t) {
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        else delete document.documentElement.dataset.theme;
+    }
+    return { init: ref => { dotnet = ref; }, slotAt, setTheme };
 })();
