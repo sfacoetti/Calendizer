@@ -1,14 +1,19 @@
-window.orga = (function () {
-    const START = 8 * 60, SLOTS = 22; // altezza slot = altezza colonna / SLOTS (si adatta alla finestra)
+window.calendizer = (function () {
+    const START = 0; // la colonna copre 0:00-24:00; gli slot hanno altezze diverse (ore fuori orario ridotte), quindi si leggono i rettangoli reali
     let dotnet = null, drag = null, ghost = null;
 
     function cellAt(x, y) {
         return document.elementsFromPoint(x, y).find(e => e.dataset && e.dataset.day);
     }
     // indice dello slot sotto y: con dy (grab dell'attività trascinata) si arrotonda, senza si prende lo slot puntato
-    function slotIndex(r, y, dy) {
-        const SH = r.height / SLOTS;
-        return Math.max(0, Math.min(SLOTS - 1, Math.floor((y - (dy || 0) - r.top) / SH + (dy === undefined ? 0 : 0.5))));
+    function slotRects(col) { return Array.from(col.children).filter(c => c.classList.contains('slot')).map(c => c.getBoundingClientRect()); }
+    function slotIndex(col, y, dy) {
+        const rs = slotRects(col);
+        if (dy === undefined) { const i = rs.findIndex(r => y < r.bottom); return i < 0 ? rs.length - 1 : i; }
+        const t = y - dy; // slot il cui bordo alto è il più vicino alla cima dell'attività trascinata
+        let best = 0;
+        rs.forEach((r, i) => { if (Math.abs(r.top - t) < Math.abs(rs[best].top - t)) best = i; });
+        return best;
     }
 
     // "yyyy-MM-dd|minuti" dello slot sotto il punto (coordinate CSS del viewport), "|-1" = vista mese
@@ -16,7 +21,7 @@ window.orga = (function () {
         const el = cellAt(x, y);
         if (!el) return null;
         if (el.dataset.month) return el.dataset.day + "|-1";
-        return el.dataset.day + "|" + (START + slotIndex(el.getBoundingClientRect(), y, dy) * 30);
+        return el.dataset.day + "|" + (START + slotIndex(el, y, dy) * 30);
     }
 
     function hideGhost() { if (ghost) { ghost.remove(); ghost = null; } }
@@ -31,9 +36,9 @@ window.orga = (function () {
         const set = (l, t, w, h) => Object.assign(ghost.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px' });
         if (el.dataset.month) { ghost.className = 'ghost cell'; return set(r.left, r.top, r.width, r.height); }
         ghost.className = 'ghost';
-        const SH = r.height / SLOTS, n = (drag && drag.slots) || 1;
-        const i = Math.min(slotIndex(r, y, drag && drag.dy), SLOTS - n);
-        const top = r.top + i * SH, h = n * SH - 2;
+        const rs = slotRects(el), n = (drag && drag.slots) || 1;
+        const i = Math.min(slotIndex(el, y, drag && drag.dy), rs.length - n);
+        const top = rs[i].top, h = rs[i + n - 1].bottom - top - 2;
         let k = 0; // attività già presenti nello stesso intervallo
         el.querySelectorAll('.act').forEach(a => {
             if (drag && a.dataset.id === drag.id) return;
@@ -48,7 +53,7 @@ window.orga = (function () {
         if (!a) return;
         const isAct = a.classList.contains('act');
         drag = { id: a.dataset.id, dy: isAct ? e.clientY - a.getBoundingClientRect().top : undefined };
-        if (isAct) drag.slots = Math.max(1, Math.round((a.getBoundingClientRect().height + 2) / (a.parentElement.getBoundingClientRect().height / SLOTS)));
+        if (isAct) drag.slots = Math.max(1, Math.round(+a.dataset.min / 30));
         e.dataTransfer.setData('text/plain', 'act');
         e.dataTransfer.effectAllowed = 'move';
     });
@@ -95,9 +100,13 @@ window.orga = (function () {
         const a = h.closest('[data-id]');
         a.draggable = false;
         h.setPointerCapture(e.pointerId);
-        const top = a.getBoundingClientRect().top, SH = a.parentElement.getBoundingClientRect().height / SLOTS, h0 = a.style.height;
-        const slots = ev => Math.max(1, Math.round((ev.clientY - top) / SH));
-        const move = ev => { a.style.height = (slots(ev) * SH - 2) + 'px'; };
+        const rs = slotRects(a.parentElement), s0 = Math.round(+a.dataset.start / 30), top = rs[s0].top, h0 = a.style.height;
+        const slots = ev => { // numero di slot fino al bordo basso più vicino al puntatore
+            let k = s0 + 1;
+            for (let j = s0 + 1; j <= rs.length; j++) if (Math.abs(rs[j - 1].bottom - ev.clientY) < Math.abs(rs[k - 1].bottom - ev.clientY)) k = j;
+            return k - s0;
+        };
+        const move = ev => { a.style.height = (rs[s0 + slots(ev) - 1].bottom - top - 2) + 'px'; };
         const up = ev => {
             h.removeEventListener('pointermove', move);
             h.removeEventListener('pointerup', up);
@@ -113,5 +122,10 @@ window.orga = (function () {
         if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
         else delete document.documentElement.dataset.theme;
     }
-    return { init: ref => { dotnet = ref; }, slotAt, setTheme };
+    // Porta la vista alle 8:00 (la griglia mostra 8:00-18:30, il resto sta sopra/sotto)
+    function scrollToDay() {
+        const g = document.querySelector(".grid"), b = g && g.querySelector(".body");
+        if (b) g.scrollTop = b.offsetHeight * 16 / 48;
+    }
+    return { init: ref => { dotnet = ref; }, slotAt, setTheme, scrollToDay };
 })();

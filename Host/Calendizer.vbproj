@@ -8,6 +8,7 @@
     <StartupObject>Sub Main</StartupObject>
     <OptionStrict>On</OptionStrict>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="8.0.*" />

@@ -58,8 +58,10 @@ End Class
 Public Class StoreData
     Public Property Activities As New List(Of Activity)
     Public Property Rules As New List(Of ColorRule)
-    ''' <summary>Preavviso predefinito in minuti; 0 = disattivato.</summary>
-    Public Property Reminder As Integer = 0
+    ''' <summary>Preavviso predefinito in minuti; 0 = disattivato, -1 = all'ora dell'evento.</summary>
+    Public Property Reminder As Integer = -1
+    ' <summary>0 = file creato prima del preavviso "all'ora dell'evento"; 2 = migrato.</summary>
+    Public Property Schema As Integer = 0
     ''' <summary>"auto" (segue Windows), "light" o "dark".</summary>
     Public Property Theme As String = "auto"
     Public Property HideDone As Boolean = False
@@ -69,8 +71,8 @@ Public Class StoreData
 End Class
 
 Public Class CalendarState
-    Public Const FirstMinute As Integer = 8 * 60
-    Public Const LastMinute As Integer = 19 * 60
+    Public Const FirstMinute As Integer = 0
+    Public Const LastMinute As Integer = 24 * 60
     Public Const SlotMinutes As Integer = 30
 
     Private ReadOnly _path As String
@@ -109,6 +111,7 @@ Public Class CalendarState
             File.Copy(_path, _path & ".bak", True) ' backup prima che un salvataggio sovrascriva il file illeggibile
             _data = New StoreData
         End Try
+        If _data.Schema < 2 Then _data.Reminder = -1 : _data.Schema = 2 ' una tantum: "all'ora dell'evento" diventa il predefinito anche nei dati esistenti
         If _data.Rules.Count = 0 Then
             _data.Rules.Add(New ColorRule With {.Key = "@hexpol.com", .Color = "#1e90ff"})
             _data.Rules.Add(New ColorRule With {.Key = "@in4tek.it", .Color = "#e53935"})
@@ -281,8 +284,8 @@ Public Class CalendarState
     ''' <summary>Attività il cui preavviso è scattato e non ancora notificate (anche saltate a app chiusa); le segna come notificate.</summary>
     Public Function TakeDueReminders(now As DateTime) As List(Of Activity)
         ' shortcut: recupera solo le ultime 24 h, per non notificare attività vecchie alla prima attivazione
-        Dim due = Activities.Where(Function(a) Not a.Done AndAlso Not a.Notified AndAlso ReminderOf(a) > 0 AndAlso
-                                       now >= a.Start.AddMinutes(-ReminderOf(a)) AndAlso a.Start > now.AddHours(-24)).OrderBy(Function(a) a.Start).ToList()
+        Dim due = Activities.Where(Function(a) Not a.Done AndAlso Not a.Notified AndAlso ReminderOf(a) <> 0 AndAlso
+                                       now >= a.Start.AddMinutes(-Math.Max(ReminderOf(a), 0)) AndAlso a.Start > now.AddHours(-24)).OrderBy(Function(a) a.Start).ToList()
         If due.Count > 0 Then
             due.ForEach(Sub(a) a.Notified = True)
             Touch()

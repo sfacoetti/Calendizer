@@ -20,7 +20,7 @@ Calendario desktop per Windows per trasformare le email di Outlook (classic) in 
 | Progetto | Linguaggio | Contenuto |
 |---|---|---|
 | `Core` | VB.NET | modello, salvataggio JSON, colori, layout sovrapposizioni, lettura Outlook (COM, late binding) |
-| `UI` | C# (Razor) | `App.razor`, `orga.js` (drag/resize/drop), `orga.css`, icone SVG. Razor non è supportato da VB, quindi la UI è in una libreria C# minima |
+| `UI` | C# (Razor) | `App.razor`, `calendizer.js` (drag/resize/drop), `calendizer.css`, icone SVG. Razor non è supportato da VB, quindi la UI è in una libreria C# minima |
 | `Host` | VB.NET WinForms | finestra, BlazorWebView, icona app, lettura mail dopo il drop |
 
 Il drop esterno (Outlook) è ricevuto dalla pagina, che calcola lo slot e avvisa l'host; l'host aspetta 300 ms e legge la selezione di Outlook via COM (durante il drag Outlook è bloccato).

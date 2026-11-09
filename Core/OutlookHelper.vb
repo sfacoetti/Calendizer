@@ -157,9 +157,9 @@ Public Module OutlookHelper
         Return String.Join(vbCrLf, parts)
     End Function
 
-    Private Function OrgaId(ev As Object) As String
+    Private Function CalendizerId(ev As Object) As String
         Try
-            Dim p As Object = ev.UserProperties.Find("OrgaId")
+            Dim p As Object = ev.UserProperties.Find("CalendizerId")
             Return If(p Is Nothing, "", CStr(p.Value))
         Catch
             Return ""
@@ -167,27 +167,27 @@ Public Module OutlookHelper
     End Function
 
     ''' <summary>
-    ''' Rende il calendario Calendizer uguale all'app: un evento per attività, riconosciuto dalla proprietà nascosta OrgaId.
-    ''' Quello che nella cartella non corrisponde a nessuna attività (eliminate, duplicati, eventi senza OrgaId) viene eliminato
+    ''' Rende il calendario Calendizer uguale all'app: un evento per attività, riconosciuto dalla proprietà nascosta CalendizerId.
+    ''' Quello che nella cartella non corrisponde a nessuna attività (eliminate, duplicati, eventi senza CalendizerId) viene eliminato
     ''' (finisce in Elementi eliminati). La cartella è solo di Calendizer: non metterci eventi propri.
     ''' </summary>
     Public Function SyncCalendar(items As List(Of Activity)) As String
         Dim app As Object = CreateObject("Outlook.Application")
         Dim folder As Object = GetSyncFolder(app)
         Dim created = 0, updated = 0, deleted = 0, failed = 0
-        ' stato attuale della cartella: OrgaId -> evento (il primo vince, gli altri sono duplicati da eliminare)
+        ' stato attuale della cartella: CalendizerId -> evento (il primo vince, gli altri sono duplicati da eliminare)
         Dim byId As New Dictionary(Of String, Object)
         Dim unclaimed As New List(Of Object)
         For i = 1 To CInt(folder.Items.Count)
             Dim ev As Object = folder.Items.Item(i)
-            Dim oid As String = OrgaId(ev)
+            Dim oid As String = CalendizerId(ev)
             If oid <> "" AndAlso Not byId.ContainsKey(oid) Then byId(oid) = ev Else unclaimed.Add(ev)
         Next
         Dim claimed As New HashSet(Of String)
         For Each a In items
             Try
                 Dim ev As Object = Nothing
-                If Not byId.TryGetValue(a.Id, ev) Then ev = FindEvent(app, folder, a.OutlookEventId) ' eventi creati prima dell'OrgaId
+                If Not byId.TryGetValue(a.Id, ev) Then ev = FindEvent(app, folder, a.OutlookEventId) ' eventi creati prima del CalendizerId
                 If ev IsNot Nothing Then
                     If claimed.Contains(CStr(ev.EntryID)) Then ev = Nothing ' già assegnato a un'altra attività: se ne crea uno nuovo
                 End If
@@ -196,9 +196,9 @@ Public Module OutlookHelper
                 If isNew Then ev = folder.Items.Add(1) ' olAppointmentItem
                 Dim subj As String = If(a.Done, "✓ ", "") & a.Title
                 Dim body As String = EventBody(a)
-                If isNew OrElse OrgaId(ev) <> a.Id OrElse CStr(ev.Subject) <> subj OrElse CDate(ev.Start) <> a.Start OrElse CDate(ev.End) <> a.EndTime() OrElse CStr(ev.Body) <> body Then
-                    Dim p As Object = ev.UserProperties.Find("OrgaId")
-                    If p Is Nothing Then p = ev.UserProperties.Add("OrgaId", 1) ' olText
+                If isNew OrElse CalendizerId(ev) <> a.Id OrElse CStr(ev.Subject) <> subj OrElse CDate(ev.Start) <> a.Start OrElse CDate(ev.End) <> a.EndTime() OrElse CStr(ev.Body) <> body Then
+                    Dim p As Object = ev.UserProperties.Find("CalendizerId")
+                    If p Is Nothing Then p = ev.UserProperties.Add("CalendizerId", 1) ' olText
                     p.Value = a.Id
                     ev.Subject = subj
                     ev.Start = a.Start
@@ -216,7 +216,7 @@ Public Module OutlookHelper
                 failed += 1
             End Try
         Next
-        ' tutto ciò che resta (eventi di attività eliminate, duplicati, senza OrgaId) va via
+        ' tutto ciò che resta (eventi di attività eliminate, duplicati, senza CalendizerId) va via
         ' (gli eventi di attività esistenti ma andate in errore restano: si riprova alla prossima)
         Dim live As New HashSet(Of String)(items.Select(Function(x) x.Id))
         unclaimed.AddRange(byId.Where(Function(kv) Not live.Contains(kv.Key)).Select(Function(kv) kv.Value))

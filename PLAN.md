@@ -19,7 +19,7 @@ Struttura: Core (VB, stato/dati/Outlook COM) | UI (C# RCL, solo .razor/js/css, R
 6. Tema Chiaro / Scuro / Segui Windows (variabili CSS, `data-theme`) — provato a vista
 7. Esporta `.ics` (intervallo da/a, "Salva con nome") — formato controllato, importazione in Outlook da provare
 8. Robustezza: backup giornaliero di `data.json` (ultime 7) e pubblicazione `dotnet publish Host\Calendizer.vbproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o <cartella>` (exe + `wwwroot` + `WebView2Loader.dll`, serve .NET 8 Desktop Runtime) — backup e avvio dell'exe pubblicato provati
-9. Sincronizzazione a una via con Outlook: barra in alto, sottocartella "Calendizer" del calendario predefinito, evento riconosciuto da proprietà `OrgaId`; ciò che non corrisponde ad attività viene eliminato (Elementi eliminati) — corretta dopo duplicati e orfani, da riprovare
+9. Sincronizzazione a una via con Outlook: barra in alto, sottocartella "Calendizer" del calendario predefinito, evento riconosciuto da proprietà `CalendizerId`; ciò che non corrisponde ad attività viene eliminato (Elementi eliminati) — corretta dopo duplicati e orfani, da riprovare
 10. Impostazioni: interruttore "Avvia con Windows" (`StartupHelper`) e "Notch sul bordo destro" (`Host/NotchForm.vb`: striscia al centro del bordo destro dello schermo principale, dopo 3 s di mouse sopra diventa una pillola di vetro sfocato con l'icona; clic = apre l'app; icona nell'area di notifica mantenuta) — aspetto verificato con uno screenshot di prova, integrazione nell'app da provare
 11. Altro: una sola istanza (la seconda riporta in primo piano la prima), Esc chiude ogni popup + X in alto a destra, pulsanti moderni con icone, "Nascondi completate", ultima cartella di archivio salvata, conferma con Canc, pallino rosso sull'icona per promemoria non visti
 
@@ -38,3 +38,7 @@ Struttura: Core (VB, stato/dati/Outlook COM) | UI (C# RCL, solo .razor/js/css, R
 - La sincronizzazione Outlook è a una via e manuale; la cartella Calendizer è solo dell'app
 
 Decisioni prese: archiviazione solo su richiesta; promemoria predefinito + valore per attività; tema a 3 voci; export solo `.ics`; sincronizzazione a una via; niente trascinamento al contrario verso le cartelle di Outlook.
+
+## Aggiornamenti da GitHub (codice fatto, build pulita; da provare con una release reale)
+`Core/UpdateHelper.vb` (API releases/latest del repo pubblico `sfacoetti/Calendizer`, confronto versione, download zip, `update.cmd` con backup in %TEMP%, riavvio), popup all'avvio + "Cerca aggiornamenti" nelle Impostazioni, versione in `Host/Calendizer.vbproj` (`<Version>`), `release.ps1 <versione>` (publish + zip + `gh release create`).
+Prova: installare v1.0.0, pubblicare v1.0.1, aprire l'app -> popup -> "Aggiorna ora" -> si riapre con 1.0.1.

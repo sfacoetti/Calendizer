@@ -80,16 +80,16 @@
                             {
                                 var mm = m; // copie: le lambda non devono catturare la variabile del ciclo
                                 var ii = (m - CalendarState.FirstMinute) / 30;
-                                <div class="slot @(m % 60 == 30 ? "half" : "") @(IsSel(d, ii) ? "sel" : "")" @onmousedown="e => SlotDown(d, ii, e)" @onmouseenter="e => SlotEnter(d, ii, e)" @onmouseup="() => selecting = false" @ondblclick="() => OpenNew(d, mm, 30)"></div>
+                                <div class="slot @(m % 60 == 30 ? "half" : "") @(Off(m) ? "off" : "") @(IsSel(d, ii) ? "sel" : "")" @onmousedown="e => SlotDown(d, ii, e)" @onmouseenter="e => SlotEnter(d, ii, e)" @onmouseup="() => selecting = false" @ondblclick="() => OpenNew(d, mm, 30)"></div>
                             }
                             @foreach (var li in S.LayoutDay(d))
                             {
                                 var a = li.Act;
                                 var c = S.ColorOf(a);
-                                var span = CalendarState.LastMinute - CalendarState.FirstMinute;
-                                var top = (a.Start.TimeOfDay.TotalMinutes - CalendarState.FirstMinute) * 100.0 / span;
-                                var h = a.Minutes * 100.0 / span;
-                                <div class="act @(selected == a.Id ? "sel" : "") @(a.Done ? "done" : "")" draggable="true" data-id="@a.Id" @onclick="() => SelectAct(a)" @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
+                                var sm = a.Start.TimeOfDay.TotalMinutes;
+                                var top = sm * 100.0 / 1440;
+                                var h = a.Minutes * 100.0 / 1440;
+                                <div class="act @(selected == a.Id ? "sel" : "") @(a.Done ? "done" : "")" draggable="true" data-id="@a.Id" data-start="@((int)sm)" data-min="@a.Minutes" @onclick="() => SelectAct(a)" @oncontextmenu="e => Menu(a, e)" @oncontextmenu:preventDefault
                                      style="top:@Pc(top);height:calc(@Pc(h) - 2px);left:@Pc(li.Col * 100.0 / li.Cols);width:@Pc(100.0 / li.Cols);background:@(c)40;border-color:@c">
                                     <div class="at">@if (a.Done) {<img class="ok" src="@Ic("confirm")" />}@a.Title</div>
                                     <div class="as">@(string.IsNullOrEmpty(a.Sender) ? a.Body : a.Sender)</div>
@@ -142,7 +142,7 @@
 @if (menuAct != null)
 {
     <div class="ctx-bg" @onclick="() => menuAct = null" @oncontextmenu="() => menuAct = null" @oncontextmenu:preventDefault></div>
-    <div class="ctx" style="left:min(@Px(mx), calc(100vw - 260px));top:min(@Px(my), calc(100vh - 340px))">
+    <div class="ctx" style="left:min(@Px(mx), calc(100vw - 260px));top:max(8px, min(@Px(my), calc(100vh - 340px)));max-height:calc(100vh - max(8px, min(@Px(my), calc(100vh - 340px))) - 8px)">
         <div class="ctx-t">@menuAct.Title</div>
         <div class="sws">
             @foreach (var c in Palette)
@@ -165,7 +165,7 @@
         <div class="row">
             <span class="lbl">Promemoria</span>
             <select @onchange="e => SetReminder(e.Value?.ToString())">
-                <option value="" selected="@(menuAct.Reminder == null)">Predefinito (@RemLabel(S.DefaultReminder))</option>
+                <option value="" selected="@(menuAct.Reminder == null)">@RemLabel(S.DefaultReminder)</option>
                 @foreach (var r in Reminders)
                 {
                     <option value="@r" selected="@(menuAct.Reminder == r)">@RemLabel(r)</option>
@@ -236,11 +236,27 @@
     </div>
 }
 
+@if (upd != null)
+{
+    <div class="modal-bg" @onclick="() => upd = null">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="mtop"><h3>Aggiornamento disponibile</h3><button class="xbtn" title="Chiudi" @onclick="() => upd = null"><img src="@Ic("close")" /></button></div>
+            <p>Versione @upd.Value.Version (la tua: @UpdateHelper.CurrentVersion()). L'app si chiude e si riapre da sola.</p>
+            <div class="row">
+                <button class="ibtn" disabled="@updBusy" @onclick="DoUpdate">Aggiorna ora</button>
+                <button class="ibtn" disabled="@updBusy" @onclick="() => upd = null">Più tardi</button>
+                <span class="meta">@updMsg</span>
+            </div>
+        </div>
+    </div>
+}
+
 @if (settings)
 {
     <div class="modal-bg" @onclick="() => settings = false">
-        <div class="modal" @onclick:stopPropagation>
+        <div class="modal wide" @onclick:stopPropagation>
             <div class="mtop"><h3>Impostazioni</h3><button class="xbtn" title="Chiudi" @onclick="() => settings = false"><img src="@Ic("close")" /></button></div>
+            <div class="set2"><div class="setc">
             <div class="row">
                 <span class="lbl">Tema</span>
                 <select @onchange="e => SetTheme(e.Value?.ToString())">
@@ -286,8 +302,16 @@
                 <input type="date" value="@expTo" @onchange="e => expTo = e.Value?.ToString()" />
                 <button class="ibtn" title="Esporta in .ics (importabile in Outlook)" @onclick="DoExport"><img src="@Ic("export")" />Esporta .ics</button>
             </div>
+            <div class="row">
+                <span class="lbl">Versione</span>
+                <span>@UpdateHelper.CurrentVersion()</span>
+                <button class="ibtn" @onclick="() => CheckUpdate(true)">Cerca aggiornamenti</button>
+                <span class="meta">@updMsg</span>
+            </div>
+            </div><div class="setc frame">
             <h3>Colori per mittente</h3>
             <div class="meta">Dominio (es. @@hexpol.com) o indirizzo completo. L'indirizzo ha la precedenza.</div>
+            <div class="rules">
             @foreach (var r in S.Rules.ToList())
             {
                 <div class="rule">
@@ -296,9 +320,11 @@
                     <button title="Rimuovi" @onclick="() => { S.Rules.Remove(r); S.Touch(); }">✕</button>
                 </div>
             }
+            </div>
             <div class="btns">
                 <button class="ibtn" @onclick="AddRule"><img src="@Ic("add")" />Aggiungi</button>
             </div>
+            </div></div>
         </div>
     </div>
 }
@@ -349,8 +375,8 @@
     [JSInvokable]
     public void EscKey()
     {
-        if (mail == null && !settings && !newDlg && menuAct == null && archAct == null) return;
-        mail = null; settings = false; menuAct = null; archAct = null;
+        if (mail == null && !settings && !newDlg && menuAct == null && archAct == null && upd == null) return;
+        upd = null; mail = null; settings = false; menuAct = null; archAct = null;
         if (newDlg) CloseNew();
         InvokeAsync(StateHasChanged);
     }
@@ -497,8 +523,11 @@
     }
 
     static readonly double[] NotchDelays = { 0.5, 1, 1.5, 2, 3, 5 };
-    static readonly int[] Reminders = { 0, 5, 15, 30 };
-    static string RemLabel(int m) => m == 0 ? "Nessuno" : $"{m} min prima";
+    static readonly int[] Reminders = { 0, -1, 5, 15, 30 };
+    static string RemLabel(int m) => m == 0 ? "Nessuno" : m < 0 ? "All'ora dell'evento" : $"{m} min prima";
+
+    // Orario attivo 8:00-18:00; fuori da questo intervallo gli slot sono grigi (ma utilizzabili)
+    static bool Off(int m) => m < 8 * 60 || m >= 18 * 60;
     void SetReminder(string v) { S.SetReminder(menuAct.Id, string.IsNullOrEmpty(v) ? null : int.Parse(v)); menuAct = null; }
     void ToggleDone() { S.ToggleDone(menuAct.Id); menuAct = null; }
     void Delete() { S.Remove(menuAct.Id); menuAct = null; }
@@ -549,22 +578,43 @@
     void Today() { S.CurrentDate = DateTime.Today; S.Navigate(); }
     void OpenDay(DateTime d) { S.CurrentDate = d; S.View = ViewMode.Day; S.Navigate(); }
 
-    protected override void OnInitialized() => S.Changed += OnChanged;
+    protected override void OnInitialized() { S.Changed += OnChanged; _ = CheckUpdate(false); }
+
+    (Version Version, string ZipUrl)? upd; string updMsg; bool updBusy;
+    async Task CheckUpdate(bool manual)
+    {
+        updMsg = null;
+        try
+        {
+            upd = await UpdateHelper.CheckAsync();
+            if (upd == null && manual) updMsg = "Hai già l'ultima versione.";
+        }
+        catch (Exception ex) { if (manual) updMsg = "Controllo non riuscito: " + ex.Message; } // all'avvio, senza rete, resta muto
+        await InvokeAsync(StateHasChanged);
+    }
+    async Task DoUpdate()
+    {
+        updBusy = true; updMsg = "Scarico l'aggiornamento…"; StateHasChanged();
+        try { await UpdateHelper.ApplyAsync(upd.Value.ZipUrl); }
+        catch (Exception ex) { updBusy = false; updMsg = "Aggiornamento non riuscito: " + ex.Message; }
+    }
     void OnChanged() => InvokeAsync(StateHasChanged);
     public void Dispose() { S.Changed -= OnChanged; self?.Dispose(); }
 
+    ViewMode? lastView;
     protected override async Task OnAfterRenderAsync(bool first)
     {
+        if (S.View != lastView) { lastView = S.View; await JS.InvokeVoidAsync("calendizer.scrollToDay"); } // all'avvio e al cambio vista si riparte dalle 8:00
         if (!first) return;
         self = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("orga.init", self);
-        await JS.InvokeVoidAsync("orga.setTheme", S.Theme);
+        await JS.InvokeVoidAsync("calendizer.init", self);
+        await JS.InvokeVoidAsync("calendizer.setTheme", S.Theme);
     }
 
     async Task SetTheme(string t)
     {
         S.Theme = t;
-        await JS.InvokeVoidAsync("orga.setTheme", t);
+        await JS.InvokeVoidAsync("calendizer.setTheme", t);
     }
 
     [JSInvokable]
