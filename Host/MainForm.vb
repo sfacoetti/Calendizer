@@ -52,6 +52,14 @@ Public Class MainForm
         _tray.Icon = Icon ' torna l'icona normale: il promemoria è stato visto
     End Sub
 
+    ' Mail trascinata sulla notch: la finestra deve comparire sopra Outlook anche se Windows nega il focus durante il drag
+    Private Sub ShowForDrop()
+        If Visible AndAlso WindowState <> FormWindowState.Minimized AndAlso ActiveForm Is Me Then Return
+        ShowWindow()
+        TopMost = True  ' porta in cima senza bisogno del focus…
+        TopMost = False ' …e torna una finestra normale
+    End Sub
+
     ' Icona normale con un pallino rosso: segnala un promemoria non ancora visto
     Private _alertIcon As Icon
     Private Function AlertIcon() As Icon
@@ -78,6 +86,7 @@ Public Class MainForm
         If _state.Notch AndAlso _notch Is Nothing Then
             _notch = New NotchForm(Icon)
             AddHandler _notch.Opened, AddressOf ShowWindow
+            AddHandler _notch.DragArrived, AddressOf ShowForDrop
             _notch.ShowNotch()
         End If
         If _notch IsNot Nothing Then _notch.DwellMs = CInt(_state.NotchDelay * 1000)

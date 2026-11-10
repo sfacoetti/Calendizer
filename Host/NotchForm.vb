@@ -11,6 +11,12 @@ Public Class NotchForm
     Inherits Form
 
     Public Event Opened()
+    ''' <summary>Un trascinamento (es. mail da Outlook) è arrivato sulla striscia.</summary>
+    Public Event DragArrived()
+
+    <DllImport("user32.dll")>
+    Private Shared Function SetWindowPos(hWnd As IntPtr, after As IntPtr, x As Integer, y As Integer, cx As Integer, cy As Integer, flags As UInteger) As Boolean
+    End Function
 
     <DllImport("dwmapi.dll")>
     Private Shared Function DwmSetWindowAttribute(hwnd As IntPtr, attr As Integer, ByRef value As Integer, size As Integer) As Integer
@@ -19,7 +25,7 @@ Public Class NotchForm
     ''' <summary>Permanenza del mouse sulla striscia prima che compaia la pillola (evita attivazioni per caso). Impostabile.</summary>
     Public Property DwellMs As Integer = 1500
     Private Const LeaveMs As Integer = 600  ' tempo fuori dalla pillola prima che si ritiri
-    Private Const StripW As Single = 10
+    Private Const StripW As Single = 14
     Private Const StripH As Single = 110
     Private Const PillW As Single = 76
     Private Const PillH As Single = 124
@@ -42,7 +48,15 @@ Public Class NotchForm
         StartPosition = FormStartPosition.Manual
         BackColor = Color.Black ' sul vetro di Windows il nero diventa trasparente
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint, True)
+        AllowDrop = True
         AddHandler _timer.Tick, AddressOf OnTick
+    End Sub
+
+    ' Il drop vero avviene sul calendario: qui basta far comparire la finestra (effetto None = niente drop sulla notch)
+    Protected Overrides Sub OnDragEnter(e As DragEventArgs)
+        MyBase.OnDragEnter(e)
+        e.Effect = DragDropEffects.None
+        RaiseEvent DragArrived()
     End Sub
 
     ' Non ruba il focus e non compare in Alt+Tab
@@ -135,7 +149,11 @@ Public Class NotchForm
         Return path
     End Function
 
+    Private _ticks As Integer
     Private Sub OnTick(sender As Object, e As EventArgs)
+        ' Altre finestre TopMost (Explorer, app a tutto schermo) possono scavalcarla: ogni ~1 s torna in cima allo strato TopMost
+        _ticks += 1
+        If _ticks Mod 33 = 0 Then SetWindowPos(Handle, New IntPtr(-1), 0, 0, 0, 0, &H1 Or &H2 Or &H10) ' HWND_TOPMOST; NOSIZE|NOMOVE|NOACTIVATE
         Dim pos = Cursor.Position
         Dim s = Scr()
         Dim now = DateTime.Now
@@ -192,7 +210,7 @@ Public Class NotchForm
         ' bordo chiaro + riflesso nella metà alta: l'effetto "vetro"
         Using path = Shape(w, h)
             ' a riposo la striscia deve essere "appena visibile": riempimento chiaro che sfuma mentre la pillola si apre
-            Using fill As New SolidBrush(Color.FromArgb(CInt(150 * (1 - Progress())), 70, 130, 210)) ' azzurro traslucido: si vede su sfondi chiari e scuri
+            Using fill As New SolidBrush(Color.FromArgb(CInt(220 * (1 - Progress())), 50, 120, 220)) ' azzurro traslucido: si vede su sfondi chiari e scuri
                 g.FillPath(fill, path)
             End Using
             Using edge As New Pen(Color.FromArgb(90, 40, 50, 70), 1.2F * _scale) ' bordo scuro: stacca il vetro dagli sfondi chiari
