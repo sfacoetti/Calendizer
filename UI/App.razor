@@ -97,6 +97,10 @@
                                     <div class="rz"></div>
                                 </div>
                             }
+                            @if (d == DateTime.Today)
+                            {
+                                <div class="now" style="top:@Pc(DateTime.Now.TimeOfDay.TotalMinutes * 100.0 / 1440)"></div>
+                            }
                         </div>
                     }
                 </div>
@@ -576,7 +580,8 @@
     void Today() { S.CurrentDate = DateTime.Today; S.Navigate(); }
     void OpenDay(DateTime d) { S.CurrentDate = d; S.View = ViewMode.Day; S.Navigate(); }
 
-    protected override void OnInitialized() { S.Changed += OnChanged; _ = CheckUpdate(false); }
+    System.Threading.Timer nowTick; // ridisegna ogni minuto: sposta la linea dell'ora corrente
+    protected override void OnInitialized() { S.Changed += OnChanged; _ = CheckUpdate(false); nowTick = new(_ => OnChanged(), null, 60000, 60000); }
 
     (Version Version, string ZipUrl)? upd; string updMsg; bool updBusy;
     async Task CheckUpdate(bool manual)
@@ -597,7 +602,7 @@
         catch (Exception ex) { updBusy = false; updMsg = "Aggiornamento non riuscito: " + ex.Message; }
     }
     void OnChanged() => InvokeAsync(StateHasChanged);
-    public void Dispose() { S.Changed -= OnChanged; self?.Dispose(); }
+    public void Dispose() { S.Changed -= OnChanged; self?.Dispose(); nowTick?.Dispose(); }
 
     ViewMode? lastView;
     protected override async Task OnAfterRenderAsync(bool first)

@@ -100,9 +100,22 @@ Public Class MainForm
     Private Sub CheckReminders(sender As Object, e As EventArgs)
         Dim due = _state.TakeDueReminders(DateTime.Now)
         If due.Count = 0 Then Return
-        Dim lines = due.Take(5).Select(Function(a) $"{a.Start:HH:mm} {a.Title}")
         If Not Visible Then _tray.Icon = AlertIcon() ' finestra nascosta: il pallino resta finché non la apri
-        _tray.ShowBalloonTip(10000, "Calendizer", String.Join(vbLf, lines) & If(due.Count > 5, vbLf & $"…e altre {due.Count - 5}", ""), ToolTipIcon.Info)
+        ShowReminderPopup(due)
+    End Sub
+
+    ' Popup proprio invece del balloon: il balloon è un toast di Windows e sparisce se le notifiche di sistema sono disattivate
+    Private _popup As ReminderPopup
+    Private Sub ShowReminderPopup(due As List(Of Activity))
+        _popup?.Close()
+        Dim f As New ReminderPopup(due.Take(5).Select(Function(a) ($"{a.Start:HH:mm} {a.Title}", _state.ColorOf(a))), due.Count - 5)
+        AddHandler f.Opened, AddressOf ShowWindow
+        AddHandler f.FormClosed, Sub(s, e) If _popup Is f Then _popup = Nothing
+        _popup = f
+        f.Show()
+        Dim wa = Screen.PrimaryScreen.WorkingArea ' in basso a destra, accanto all'orologio come il balloon
+        f.Location = New Point(wa.Right - f.Width - 12, wa.Bottom - f.Height - 12)
+        Media.SystemSounds.Asterisk.Play()
     End Sub
 
     Public Sub New(startHidden As Boolean, showEvt As Threading.EventWaitHandle)

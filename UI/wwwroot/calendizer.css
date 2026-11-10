@@ -25,6 +25,8 @@ button.danger { color: #c62828; }
 .col.today { background: var(--today); }
 .slot { flex: 1; min-height: 0; border-top: 1px solid var(--line); }
 .slot.half { border-top-style: dotted; }
+.now { position: absolute; left: 0; right: 0; border-top: 2px solid #e53935; z-index: 1; pointer-events: none; }
+.now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #e53935; }
 
 .act { position: absolute; overflow: hidden; border-left: 3px solid; border-radius: 4px; padding: 2px 18px 2px 5px; cursor: grab; font-size: 11px; line-height: 14px; user-select: none; }
 .at { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
