@@ -271,20 +271,18 @@
             </label>
             <label class="row tgl-row">
                 <input type="checkbox" class="tgl" checked="@S.Notch" @onchange="e => S.Notch = (bool)e.Value" />
-                <span>Notch sul bordo destro dello schermo (compare dopo 3 secondi con il mouse sopra)</span>
+                <span>Notch sul bordo destro dello schermo</span>
             </label>
             @if (S.Notch)
             {
                 <div class="row">
-                    <span class="lbl">Attesa notch</span>
+                    <span class="lbl">Ritardo comparsa calendario con mouse-over-notchBar</span>
                     <select @onchange="e => S.NotchDelay = double.Parse(e.Value.ToString(), CultureInfo.InvariantCulture)">
                         @foreach (var d in NotchDelays)
                         {
                             <option value="@d.ToString(CultureInfo.InvariantCulture)" selected="@(d == S.NotchDelay)">@(d.ToString("0.#", It)) s</option>
                         }
-                    </select>
-                    <span class="meta">con il mouse sulla striscia</span>
-                </div>
+                    </select>                </div>
             }
             <div class="row">
                 <span class="lbl">Promemoria predefinito</span>
