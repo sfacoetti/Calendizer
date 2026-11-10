@@ -221,6 +221,20 @@
     </div>
 }
 
+@if (delAct != null)
+{
+    <div class="modal-bg" @onclick="() => delAct = null">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="mtop"><h3>Eliminare l'attività?</h3><button class="xbtn" title="Chiudi" @onclick="() => delAct = null"><img src="@Ic("close")" /></button></div>
+            <div class="meta">«@delAct.Title»</div>
+            <div class="btns">
+                <button class="ibtn" @onclick="() => delAct = null">Annulla</button>
+                <button class="ibtn" @onclick="ConfirmDelete"><img src="@Ic("trash")" />Elimina</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (mail != null)
 {
     <div class="modal-bg" @onclick="() => mail = null">
@@ -368,7 +382,7 @@
     [JSInvokable]
     public void EnterKey()
     {
-        if (selDay == null || mail != null || settings || newDlg || menuAct != null || archAct != null) return;
+        if (selDay == null || mail != null || settings || newDlg || menuAct != null || archAct != null || delAct != null) return;
         int lo = Math.Min(selA, selB), hi = Math.Max(selA, selB);
         OpenNew(selDay.Value, CalendarState.FirstMinute + lo * 30, (hi - lo + 1) * 30);
         InvokeAsync(StateHasChanged);
@@ -377,8 +391,8 @@
     [JSInvokable]
     public void EscKey()
     {
-        if (mail == null && !settings && !newDlg && menuAct == null && archAct == null && upd == null) return;
-        upd = null; mail = null; settings = false; menuAct = null; archAct = null;
+        if (mail == null && !settings && !newDlg && menuAct == null && archAct == null && upd == null && delAct == null) return;
+        upd = null; mail = null; settings = false; menuAct = null; archAct = null; delAct = null;
         if (newDlg) CloseNew();
         InvokeAsync(StateHasChanged);
     }
@@ -402,13 +416,20 @@
     [JSInvokable]
     public async Task DeleteKey()
     {
-        if (mail != null || settings || newDlg || archAct != null) return;
+        if (mail != null || settings || newDlg || archAct != null || delAct != null) return;
         var id = menuAct?.Id ?? selected;
         if (id == null) return;
-        var title = S.Activities.FirstOrDefault(x => x.Id == id)?.Title;
-        if (!await JS.InvokeAsync<bool>("confirm", $"Eliminare l'attività «{title}»?")) return;
-        menuAct = null; selected = null;
-        S.Remove(id);
+        // popup dell'app invece di confirm(): quello di WebView2 mostra l'origine "0.0.0.0" nell'intestazione
+        delAct = S.Activities.FirstOrDefault(x => x.Id == id);
+        menuAct = null;
+        await InvokeAsync(StateHasChanged);
+    }
+    Activity delAct;
+    void ConfirmDelete()
+    {
+        S.Remove(delAct.Id);
+        if (selected == delAct.Id) selected = null;
+        delAct = null;
     }
     bool settings;
     double mx, my;
