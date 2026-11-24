@@ -235,6 +235,21 @@
     </div>
 }
 
+@{ var oldCount = S.OldActivitiesCount(); }
+@if (oldCount > 0)
+{
+    <div class="modal-bg" @onclick="() => S.ResolveCleanup(false)">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="mtop"><h3>Nuovo mese</h3><button class="xbtn" title="Chiudi" @onclick="() => S.ResolveCleanup(false)"><img src="@Ic("close")" /></button></div>
+            <div class="meta">Ci sono @oldCount attività nei mesi precedenti. Vuoi eliminarle?</div>
+            <div class="btns">
+                <button class="ibtn" @onclick="() => S.ResolveCleanup(false)">Mantieni</button>
+                <button class="ibtn" @onclick="() => S.ResolveCleanup(true)"><img src="@Ic("trash")" />Elimina</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (mail != null)
 {
     <div class="modal-bg" @onclick="() => mail = null">
@@ -382,7 +397,7 @@
     [JSInvokable]
     public void EnterKey()
     {
-        if (selDay == null || mail != null || settings || newDlg || menuAct != null || archAct != null || delAct != null) return;
+        if (selDay == null || mail != null || settings || newDlg || menuAct != null || archAct != null || delAct != null || S.OldActivitiesCount() > 0) return;
         int lo = Math.Min(selA, selB), hi = Math.Max(selA, selB);
         OpenNew(selDay.Value, CalendarState.FirstMinute + lo * 30, (hi - lo + 1) * 30);
         InvokeAsync(StateHasChanged);
@@ -391,6 +406,7 @@
     [JSInvokable]
     public void EscKey()
     {
+        if (S.OldActivitiesCount() > 0) { S.ResolveCleanup(false); return; }
         if (mail == null && !settings && !newDlg && menuAct == null && archAct == null && upd == null && delAct == null) return;
         upd = null; mail = null; settings = false; menuAct = null; archAct = null; delAct = null;
         if (newDlg) CloseNew();
@@ -416,7 +432,7 @@
     [JSInvokable]
     public async Task DeleteKey()
     {
-        if (mail != null || settings || newDlg || archAct != null || delAct != null) return;
+        if (mail != null || settings || newDlg || archAct != null || delAct != null || S.OldActivitiesCount() > 0) return;
         var id = menuAct?.Id ?? selected;
         if (id == null) return;
         // popup dell'app invece di confirm(): quello di WebView2 mostra l'origine "0.0.0.0" nell'intestazione

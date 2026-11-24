@@ -46,6 +46,7 @@ Public Class MainForm
     End Sub
 
     Private Sub ShowWindow()
+        If Not Visible Then _state.CurrentDate = Date.Today : _state.Navigate() ' riaperta dalla tray: sempre sulla settimana corrente
         Show()
         WindowState = FormWindowState.Normal
         Activate()

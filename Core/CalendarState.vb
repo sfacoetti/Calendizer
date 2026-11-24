@@ -68,6 +68,8 @@ Public Class StoreData
     Public Property Notch As Boolean = False
     Public Property NotchDelay As Double = 1.5
     Public Property LastArchive As String = ""
+    ''' <summary>Mese ("yyyy-MM") in cui è già stata proposta la pulizia delle attività dei mesi precedenti.</summary>
+    Public Property CleanupMonth As String = ""
 End Class
 
 Public Class CalendarState
@@ -185,6 +187,24 @@ Public Class CalendarState
         If a Is Nothing Then Return
         Dim startMin = CInt(a.Start.TimeOfDay.TotalMinutes)
         a.Minutes = Math.Max(SlotMinutes, Math.Min(minutes, LastMinute - startMin))
+        Touch()
+    End Sub
+
+    ''' <summary>Attività dei mesi precedenti da proporre per la cancellazione; 0 se già chiesto in questo mese.</summary>
+    Public Function OldActivitiesCount() As Integer
+        Dim month = Date.Today.ToString("yyyy-MM")
+        If _data.CleanupMonth = month Then Return 0
+        Dim first = New Date(Date.Today.Year, Date.Today.Month, 1)
+        Dim n = Activities.Where(Function(a) a.Start < first).Count()
+        If n = 0 Then _data.CleanupMonth = month ' niente da proporre: non chiedere più questo mese (salvato al prossimo Touch)
+        Return n
+    End Function
+
+    ''' <summary>Risposta alla proposta: elimina (o mantiene) le attività dei mesi precedenti; non chiede più fino al mese prossimo.</summary>
+    Public Sub ResolveCleanup(delete As Boolean)
+        Dim first = New Date(Date.Today.Year, Date.Today.Month, 1)
+        If delete Then Activities.RemoveAll(Function(a) a.Start < first)
+        _data.CleanupMonth = Date.Today.ToString("yyyy-MM")
         Touch()
     End Sub
 
