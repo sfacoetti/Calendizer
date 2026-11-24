@@ -4,3 +4,5 @@ node_modules/
 Agents.md
 dist/
 PLAN.md
+.vs/
+*.user
