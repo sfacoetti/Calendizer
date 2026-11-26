@@ -72,10 +72,13 @@ Public Class NotchForm
     Protected Overrides Sub OnHandleCreated(e As EventArgs)
         MyBase.OnHandleCreated(e)
         _scale = DeviceDpi / 96.0F
-        Dim noRound = 1 ' gli angoli li fa la Region
-        DwmSetWindowAttribute(Handle, 33, noRound, 4)
-        ' Sfocatura acrilica dietro la finestra (API non documentata ma stabile da Windows 10): a differenza dello
-        ' sfondo DWM di Windows 11 rispetta la Region, quindi gli angoli restano arrotondati. Tinta bianca leggera = vetro chiaro.
+        ' Angoli arrotondati da Windows 11 (DWMWCP_ROUND): è l'unico modo che taglia anche il vetro. Una Region no:
+        ' l'acrilico la ignora e negli angoli resta un rettangolo chiaro.
+        Dim round = 2
+        DwmSetWindowAttribute(Handle, 33, round, 4)
+        Dim noBorder = &HFFFFFFFE ' DWMWA_BORDER_COLOR = DWMWA_COLOR_NONE: niente filo grigio di Windows, il bordo lo disegna OnPaint
+        DwmSetWindowAttribute(Handle, 34, noBorder, 4)
+        ' Sfocatura acrilica dietro la finestra (API non documentata ma stabile da Windows 10). Tinta bianca leggera = vetro chiaro.
         Dim accent As New AccentPolicy With {.AccentState = 4, .GradientColor = &H40FFFFFF}
         Dim size = Marshal.SizeOf(accent)
         Dim ptr = Marshal.AllocHGlobal(size)
@@ -129,15 +132,13 @@ Public Class NotchForm
         Dim h = CInt((StripH + (PillH - StripH) * p) * _scale)
         Dim s = Scr()
         SetBounds(s.Right - w, s.Top + (s.Height - h) \ 2, w, h)
-        Using path = Shape(w, h)
-            Region = New Region(path)
-        End Using
         Invalidate()
     End Sub
 
-    ' Rettangolo con gli angoli sinistri arrotondati; la parte destra esce dallo schermo e viene tagliata
-    Private Shared Function Shape(w As Integer, h As Integer) As GraphicsPath
-        Dim r = Math.Max(1, Math.Min(w \ 2, h \ 2))
+    ' Rettangolo con gli angoli sinistri arrotondati; la parte destra esce dallo schermo e viene tagliata.
+    ' Raggio = quello di Windows 11 (8 px a 96 dpi), così bordo disegnato e vetro coincidono.
+    Private Function Shape(w As Integer, h As Integer) As GraphicsPath
+        Dim r = Math.Max(1, Math.Min(CInt(8 * _scale), Math.Min(w \ 2, h \ 2)))
         Dim d = r * 2
         Dim fw = w + r
         Dim path As New GraphicsPath()
